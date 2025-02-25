@@ -1,0 +1,2 @@
+# frontend
+werewolf-frontend
