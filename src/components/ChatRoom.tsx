@@ -1,5 +1,3 @@
-// components/ChatRoom.tsx
-
 'use client';
 import React from 'react';
 import { useNavigation } from '@/utils/useNavigation';
@@ -12,7 +10,6 @@ const ChatRoom = () => {
 
   return (
     <div>
-      {/* 房间信息及导航按钮保持不变 */}
       <div className="bg-white bg-opacity-90 p-4 rounded-lg shadow-md mb-6">
         <div className="flex justify-between items-center">
           <div className="flex items-center space-x-2">
@@ -143,7 +140,6 @@ const ChatRoom = () => {
             <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
               <button
                 className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition duration-300"
-                onClick={() => handleNavigation('/room/123')}
               >
                 🎮 开始游戏
               </button>
