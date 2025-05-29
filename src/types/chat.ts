@@ -22,7 +22,7 @@ export type User = {
   isReady: boolean; 
 };
 
-export type ChatContextType = {
+export type RoomContextType = {
   socket: Socket | null;
   username: string;
   roomId: string;

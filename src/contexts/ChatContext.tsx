@@ -3,14 +3,14 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { useUser } from '@clerk/nextjs';
-import { ChatContextType, Message, RoomInfo, User } from '@/types/chat'; // 确保导入 User 类型
+import { RoomContextType, Message, RoomInfo, User } from '@/types/chat'; 
 
-const ChatContext = createContext<ChatContextType | null>(null);
+const RoomContext = createContext<RoomContextType | null>(null);
 
-export function useChatContext() {
-  const context = useContext(ChatContext);
+export function useRoomContext() {
+  const context = useContext(RoomContext);
   if (!context) {
-    throw new Error('useChatContext must be used within a ChatProvider');
+    throw new Error('useRoomContext must be used within a ChatProvider');
   }
   return context;
 }
@@ -22,7 +22,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const [roomId, setRoomId] = useState('');
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
-  const [users, setUsers] = useState<User[]>([]); // 更改为 User 对象数组
+  const [users, setUsers] = useState<User[]>([]); 
   const [rooms, setRooms] = useState<RoomInfo[]>([]);
   const [isConnecting, setIsConnecting] = useState(false);
   const [shouldAutoJoin, setShouldAutoJoin] = useState(true);
@@ -41,6 +41,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       auth: {
         userId: user.id,
         username: user.username || user.id,
+        userAvatar: user.imageUrl
       },
       reconnection: true,
       reconnectionAttempts: 10,
@@ -74,12 +75,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     newSocket.on('connect', handleConnect);
     newSocket.on('reconnect', handleReconnect);
     newSocket.on('rooms_list', setRooms);
-    
-    // 接收消息
-    newSocket.on('receive_msg', (msg: Message) => setMessages(prev => [...prev, msg]));
-    
+    newSocket.on('receive_msg', (msg: Message) => setMessages(prev => [...prev, msg]));    
     newSocket.on('room_users', (receivedUsers: User[]) => setUsers(receivedUsers));
-
     newSocket.on('message_history', setMessages);
     
     const errorHandler = (error: string) => alert(error);
@@ -101,6 +98,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       newSocket.off('validation_error', errorHandler);
       setIsConnecting(false);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, isLoaded]);
 
   const joinRoom = () => {
@@ -159,5 +157,5 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     sendMessage,
   };
 
-  return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;
+  return <RoomContext.Provider value={value}>{children}</RoomContext.Provider>;
 }

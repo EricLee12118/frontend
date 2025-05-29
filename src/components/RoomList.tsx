@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { useChatContext } from '@/contexts/ChatContext';
+import { useRoomContext } from '@/contexts/ChatContext';
 
 export const RoomsList = () => {
-  const { rooms, username, roomId, setRoomId, joinRoom, leaveRoom } = useChatContext();
+  const { rooms, username, roomId, setRoomId, joinRoom, leaveRoom } = useRoomContext();
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newRoomId, setNewRoomId] = useState('');

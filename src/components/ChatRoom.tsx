@@ -1,12 +1,12 @@
 'use client';
 import React from 'react';
 import { useNavigation } from '@/utils/useNavigation';
-import { useChatContext } from '@/contexts/ChatContext';
-import Image from 'next/image'; 
+import { useRoomContext } from '@/contexts/ChatContext';
+import Image from 'next/image';
 
 const ChatRoom = () => {
   const { handleNavigation } = useNavigation();
-  const { roomId, users, messages, message, setMessage, sendMessage, leaveRoom } = useChatContext();
+  const { roomId, users, messages, message, setMessage, sendMessage, leaveRoom } = useRoomContext();
 
   return (
     <div>
@@ -39,9 +39,31 @@ const ChatRoom = () => {
         <div className="col-span-2 bg-white bg-opacity-90 p-6 rounded-lg shadow-md space-y-6">
           <div className="text-center text-gray-600 text-lg">等待玩家加入...</div>
           <div className="grid grid-cols-4 gap-4">
-            {Array.from({ length: 8 }).map((_, index) => (
+            {users.map((user, index) => (
               <div
-                key={index}
+                key={user.userId || index}
+                className="w-20 h-20 flex items-center justify-center relative rounded-full overflow-hidden"
+              >
+                {user.userAvatar ? (
+                  <Image
+                    src={user.userAvatar}
+                    alt={user.username || '用户头像'}
+                    fill
+                    className="object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                    <span className="text-2xl text-gray-400">
+                      {user.username?.[0]?.toUpperCase() || '?'}
+                    </span>
+                  </div>
+                )}
+              </div>
+            ))}
+            
+            {Array.from({ length: Math.max(0, 8 - users.length) }).map((_, index) => (
+              <div
+                key={`empty-${index}`}
                 className="w-20 h-20 flex items-center justify-center border-2 border-dashed border-gray-300 rounded-full cursor-pointer hover:bg-gray-50 transition duration-300"
               >
                 <span className="text-2xl text-gray-400">+</span>
@@ -165,18 +187,9 @@ const ChatRoom = () => {
                   key={user.username}
                   className="flex items-center justify-between p-2 bg-gray-50 rounded-lg"
                 >
-                  <div className="flex items-center space-x-2">
-                    {user.isRoomOwner ? '👑 房主' : '👤'}
-                    {user.userAvatar && (
-                      <Image
-                        src={user.userAvatar}
-                        alt={`${user.username}的头像`}
-                        width={24}
-                        height={24}
-                        className="w-6 h-6 rounded-full"
-                      />
-                    )}
-                    <span>{user.username}</span>
+                  <div className="flex items-center gap-2">
+                    <span>{user.isRoomOwner ? '👑 房主' : '👤'}</span>
+                    <span className="truncate">{user.username}</span>
                   </div>
                   <span
                     className={`${

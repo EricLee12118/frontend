@@ -1,8 +1,8 @@
-import { useChatContext } from '@/contexts/ChatContext';
+import { useRoomContext } from '@/contexts/ChatContext';
 import RoomsList from './RoomList';
 import ChatRoom from './ChatRoom';
 
-export const ChatContent = () => {
-  const { create } = useChatContext();
+export const RoomContent = () => {
+  const { create } = useRoomContext();
   return create ? <ChatRoom /> : <RoomsList />;
 };

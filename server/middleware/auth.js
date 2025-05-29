@@ -3,7 +3,7 @@ import logger from '../config/logger.js';
 
 export default function authMiddleware(io) {
     return (socket, next) => {
-        const { userId, username } = socket.handshake.auth;
+        const { userId, username, userAvatar } = socket.handshake.auth;
         if (!userId || !username) return next(new Error("未授权"));
 
         const globalState = GlobalState.getInstance();
@@ -19,6 +19,7 @@ export default function authMiddleware(io) {
         globalState.activeUsers.set(userId, socket.id);
         socket.userId = userId;
         socket.username = username;
+        socket.userAvatar = userAvatar;
         logger.info(`用户 ${username}(${userId}) 已认证`);
         next();
     };
