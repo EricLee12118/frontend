@@ -1,42 +1,62 @@
 import { useState } from 'react';
 import { useRoomContext } from '@/contexts/ChatContext';
+import request from '../utils/request'
+import Alert from '@mui/material/Alert';
 
 export const RoomsList = () => {
   const { rooms, username, roomId, setRoomId, joinRoom, leaveRoom } = useRoomContext();
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newRoomId, setNewRoomId] = useState('');
+  const [alertMsg, setAlertMsg] = useState('');
 
   const handleJoinRoom = () => {
     setShowJoinModal(false);
-    joinRoom();
+    if(roomId.length<3){
+      setAlertMsg('房间ID最小长度为3!');
+    }else{
+      joinRoom();
+    }
+    
   };
 
   const handleCreateRoom = () => {
-    console.log('创建房间:', newRoomId);
-    setShowCreateModal(false);
+    if(newRoomId.length<3){
+      setAlertMsg('房间ID最小长度为3!');
+    }else{
+      console.log('创建房间:', newRoomId);
+      setShowCreateModal(false);
+    }
+    
   };
+
+  const handleQuickStart = () =>{
+    if (rooms.length === 0) {
+      setAlertMsg('暂无可加入的房间');
+    } else {
+      const randomIndex = Math.floor(Math.random() * rooms.length);
+      const randomRoom = rooms[randomIndex];
+      setRoomId(randomRoom.roomId);
+      setShowJoinModal(true);
+    }
+  }
 
   return (
     <div className="min-h-screen p-6">
+      {/*提示框 */}
+      {alertMsg && <Alert severity="warning">{alertMsg}</Alert>}
       <div className="bg-white bg-opacity-90 p-8 rounded-lg shadow-lg max-w-2xl mx-auto text-center">
         <div
           className="p-5 rounded-lg mb-4 hover:bg-gray-100 transition duration-300 cursor-pointer"
-          onClick={() => setShowJoinModal(true)}
+          onClick={handleQuickStart}
         >
           快速开始
-        </div>
-        <div
-          className="p-5 rounded-lg mb-4 hover:bg-gray-100 transition duration-300 cursor-pointer"
-          onClick={() => setShowJoinModal(true)}
-        >
-          加入房间
-        </div>
+        </div>  
         <div
           className="p-5 rounded-lg hover:bg-gray-100 transition duration-300 cursor-pointer"
           onClick={() => setShowCreateModal(true)}
         >
-          自定义房间
+          创建房间
         </div>
       </div>
 
@@ -63,6 +83,7 @@ export const RoomsList = () => {
           ))}
         </div>
       </div>
+
 
       {/* 加入房间的模态框 */}
       {showJoinModal && (
@@ -148,7 +169,8 @@ export const RoomsList = () => {
 
           <div className="flex flex-col sm:flex-row gap-2">
             <button
-              type="submit"
+              type="button"
+              onClick={handleJoinRoom}
               className="flex-1 bg-blue-500 hover:bg-blue-600 text-white p-2 rounded transition-colors"
             >
               加入房间

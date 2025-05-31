@@ -3,11 +3,13 @@ import React from 'react';
 import { useNavigation } from '@/utils/useNavigation';
 import { useRoomContext } from '@/contexts/ChatContext';
 import Image from 'next/image';
+import request from '../utils/request';
+import { useUser } from '@clerk/nextjs';
 
 const ChatRoom = () => {
   const { handleNavigation } = useNavigation();
-  const { roomId, users, messages, message, setMessage, sendMessage, leaveRoom } = useRoomContext();
-
+  const { roomId, users, username, messages, message, setMessage, sendMessage, leaveRoom } = useRoomContext();
+  const { user } = useUser();
   return (
     <div>
       <div className="bg-white bg-opacity-90 p-4 rounded-lg shadow-md mb-6">
@@ -229,6 +231,13 @@ const ChatRoom = () => {
             <div className="flex space-x-4">
               <button
                 className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition duration-300"
+                onClick={()=>{
+                  users.map((user) =>{
+                    if(user.username = username){
+                      user.isReady = !user.isReady;
+                    }
+                  })
+                }}
               >
                 ✅ 准备/取消
               </button>
