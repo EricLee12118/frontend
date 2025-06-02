@@ -20,7 +20,6 @@ const ChatRoom = () => {
   const [isReady, setIsReady] = useState(false);
   const [isTogglingReady, setIsTogglingReady] = useState(false);
 
-  // 检查当前用户是否已准备
   useEffect(() => {
     if (users.length && user) {
       const currentUser = users.find(u => u.userId === user.id);
@@ -30,51 +29,42 @@ const ChatRoom = () => {
     }
   }, [users, user]);
 
-  // 切换准备状态
+
   const toggleReady = () => {
     if (!socket || isTogglingReady) return;
     
     setIsTogglingReady(true);
     
     try {
-      // 发送切换准备状态的事件到服务器
       socket.emit('toggle_ready', { 
         roomId, 
         userId: user?.id,
         ready: !isReady 
       });
-      
-      // 系统会通过room_users事件返回更新后的用户列表，所以这里不需要手动更新本地状态
     } catch (error) {
       console.error("切换准备状态失败:", error);
     } finally {
-      // 延迟一下，防止按钮连续点击
       setTimeout(() => {
         setIsTogglingReady(false);
       }, 500);
     }
   };
 
-  // 模拟从API获取随机AI名字和头像
   const fetchRandomAIProfile = async () => {
     try {
-      // 模拟API返回数据
       return new Promise<{name: string, avatar: string}>((resolve) => {
         setTimeout(() => {
-          // 随机AI名字列表
           const aiNames = [
             "AI智者", "电子玩家", "数字灵魂", "逻辑思维", "矩阵行者",
             "代码大师", "虚拟玩家", "像素战士", "量子思维", "自动决策",
             "机器智能", "运算高手", "数据分析", "算法精灵", "神经网络"
           ];
           
-          // 使用最新的DiceBear API
           const styles = ['bottts', 'pixel-art', 'icons', 'shapes', 'thumbs'];
           const randomStyle = styles[Math.floor(Math.random() * styles.length)];
           const seed = `ai-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
           const avatar = `https://api.dicebear.com/9.x/${randomStyle}/png?seed=${seed}`;
           
-          // 随机选择一个名字
           const randomName = aiNames[Math.floor(Math.random() * aiNames.length)] + 
                             Math.floor(Math.random() * 100);
           
@@ -82,11 +72,10 @@ const ChatRoom = () => {
             name: randomName,
             avatar: avatar
           });
-        }, 300); // 模拟网络延迟
+        }, 300); 
       });
     } catch (error) {
       console.error("获取AI档案失败:", error);
-      // 提供默认值以防API调用失败
       return {
         name: `AI玩家${Math.floor(Math.random() * 1000)}`,
         avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=fallback-${Math.floor(Math.random() * 1000)}`
@@ -116,7 +105,6 @@ const ChatRoom = () => {
         return;
       }
       
-      // 生成AI玩家资料
       const aiPlayers = [];
       for (let i = 0; i < aiNeeded; i++) {
         const aiProfile = await fetchRandomAIProfile();
@@ -131,7 +119,6 @@ const ChatRoom = () => {
         });
       }
       
-      // 发送到服务器
       socket.emit('add_ai_players', {
         roomId,
         aiPlayers
@@ -195,18 +182,6 @@ const ChatRoom = () => {
                     </span>
                   </div>
                 )}
-                <div className="absolute bottom-0 right-0 flex space-x-1">
-                  {((user as any).isAI || (user as any).isAI) && (
-                    <div className="bg-blue-500 text-white text-xs px-1 rounded-sm">
-                      AI
-                    </div>
-                  )}
-                  {user.isReady && (
-                    <div className="bg-green-500 text-white text-xs px-1 rounded-sm">
-                      ✓
-                    </div>
-                  )}
-                </div>
               </div>
             ))}
             
@@ -350,7 +325,7 @@ const ChatRoom = () => {
                   <div className="flex items-center gap-2">
                     <span>
                       {user.isRoomOwner ? '👑 房主' : 
-                       ((user as any).isAI || (user as any).isAI) ? '🤖 AI' : '👤'}
+                       (user.isAI) ? '🤖 AI' : '👤'}
                     </span>
                     <span className="truncate">{user.username}</span>
                   </div>

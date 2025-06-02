@@ -20,3 +20,23 @@
 2025-06-02T11:28:32.209Z info: 用户 "vileplume006" 离开了房间 "2211"
 2025-06-02T11:28:35.633Z info: 用户 "vileplume" 离开了房间 "2211"
 2025-06-02T11:28:39.105Z info: 用户断开连接: vileplume(user_2syVazSeELnbOTs2gda6YC9piY3)
+2025-06-02T11:35:33.035Z info: Next.js and Socket.io server is running on port 3000
+2025-06-02T11:36:21.316Z info: 用户 vileplume006(user_2sxxrh6lmhJcbTaV6xO11PTv9Ka) 已认证
+2025-06-02T11:36:21.318Z info: 用户连接: vileplume006(user_2sxxrh6lmhJcbTaV6xO11PTv9Ka)
+2025-06-02T11:36:21.320Z info: 断开用户 user_2sxxrh6lmhJcbTaV6xO11PTv9Ka 的旧连接
+2025-06-02T11:36:21.321Z info: 用户断开连接: vileplume006(user_2sxxrh6lmhJcbTaV6xO11PTv9Ka)
+2025-06-02T11:36:21.321Z info: 用户 vileplume006(user_2sxxrh6lmhJcbTaV6xO11PTv9Ka) 已认证
+2025-06-02T11:36:21.321Z info: 用户连接: vileplume006(user_2sxxrh6lmhJcbTaV6xO11PTv9Ka)
+2025-06-02T11:36:21.350Z info: 房间 "123456" 已创建
+2025-06-02T11:36:21.350Z info: 用户 "vileplume006" 加入了房间 "123456"
+2025-06-02T11:36:25.322Z info: 用户 "vileplume006" 在房间 "123456" 中准备就绪
+2025-06-02T11:36:51.021Z info: 用户 vileplume(user_2syVazSeELnbOTs2gda6YC9piY3) 已认证
+2025-06-02T11:36:51.022Z info: 用户连接: vileplume(user_2syVazSeELnbOTs2gda6YC9piY3)
+2025-06-02T11:36:51.027Z info: 断开用户 user_2syVazSeELnbOTs2gda6YC9piY3 的旧连接
+2025-06-02T11:36:51.028Z info: 用户断开连接: vileplume(user_2syVazSeELnbOTs2gda6YC9piY3)
+2025-06-02T11:36:51.029Z info: 用户 vileplume(user_2syVazSeELnbOTs2gda6YC9piY3) 已认证
+2025-06-02T11:36:51.029Z info: 用户连接: vileplume(user_2syVazSeELnbOTs2gda6YC9piY3)
+2025-06-02T11:36:53.242Z info: 用户 "vileplume" 加入了房间 "123456"
+2025-06-02T11:36:57.417Z info: 用户 "vileplume" 在房间 "123456" 中准备就绪
+2025-06-02T11:37:06.586Z info: 用户 "vileplume006" 在房间 "123456" 中准备就绪
+2025-06-02T11:39:02.571Z info: 已添加 6 个AI玩家到房间 "123456"
