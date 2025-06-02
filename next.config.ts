@@ -14,7 +14,13 @@ const nextConfig: NextConfig = {
         hostname: 'images.clerk.dev',
         port: '',
         pathname: '/**',
-      }
+      },
+      {
+        protocol: 'https',
+        hostname: 'api.dicebear.com',
+        port: '',
+        pathname: '/**',
+      },
     ],
   },
 };

@@ -1,5 +1,3 @@
-// contexts/ChatContext.tsx
-
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { useUser } from '@clerk/nextjs';
@@ -41,7 +39,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       auth: {
         userId: user.id,
         username: user.username || user.id,
-        userAvatar: user.imageUrl
+        userAvatar: user.imageUrl,
+        isReady: false,
+        isAI: false,
       },
       reconnection: true,
       reconnectionAttempts: 10,
@@ -124,6 +124,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       setCreate(false);
     }
   };
+  
 
   const sendMessage = (e: React.FormEvent) => {
     e.preventDefault();
@@ -155,6 +156,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     joinRoom,
     leaveRoom,
     sendMessage,
+    setUsers
   };
 
   return <RoomContext.Provider value={value}>{children}</RoomContext.Provider>;

@@ -20,7 +20,7 @@ export const RoomsList = () => {
   return (
     <div className="min-h-screen p-6">
       <div className="bg-white bg-opacity-90 p-8 rounded-lg shadow-lg max-w-2xl mx-auto text-center">
-        <div
+        {/* <div
           className="p-5 rounded-lg mb-4 hover:bg-gray-100 transition duration-300 cursor-pointer"
           onClick={() => setShowJoinModal(true)}
         >
@@ -31,7 +31,7 @@ export const RoomsList = () => {
           onClick={() => setShowJoinModal(true)}
         >
           加入房间
-        </div>
+        </div> */}
         <div
           className="p-5 rounded-lg hover:bg-gray-100 transition duration-300 cursor-pointer"
           onClick={() => setShowCreateModal(true)}

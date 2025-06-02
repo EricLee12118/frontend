@@ -1,12 +1,158 @@
 'use client';
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigation } from '@/utils/useNavigation';
 import { useRoomContext } from '@/contexts/ChatContext';
+import { useUser } from '@clerk/nextjs';
 import Image from 'next/image';
-
 const ChatRoom = () => {
   const { handleNavigation } = useNavigation();
-  const { roomId, users, messages, message, setMessage, sendMessage, leaveRoom } = useRoomContext();
+  const { user } = useUser(); 
+  const { 
+    roomId, 
+    users, 
+    messages, 
+    message, 
+    setMessage, 
+    sendMessage, 
+    leaveRoom,
+    socket
+  } = useRoomContext();
+  console.log(user, users)
+  const [isLoadingAI, setIsLoadingAI] = useState(false);
+  const [isReady, setIsReady] = useState(false);
+  const [isTogglingReady, setIsTogglingReady] = useState(false);
+
+  // 检查当前用户是否已准备
+  useEffect(() => {
+    if (users.length && user) {
+      const currentUser = users.find(u => u.userId === user.id);
+      if (currentUser) {
+        setIsReady(currentUser.isReady);
+      }
+    }
+  }, [users, user]);
+
+  // 切换准备状态
+  const toggleReady = () => {
+    if (!socket || isTogglingReady) return;
+    
+    setIsTogglingReady(true);
+    
+    try {
+      // 发送切换准备状态的事件到服务器
+      socket.emit('toggle_ready', { 
+        roomId, 
+        userId: user?.id,
+        ready: !isReady 
+      });
+      
+      // 系统会通过room_users事件返回更新后的用户列表，所以这里不需要手动更新本地状态
+    } catch (error) {
+      console.error("切换准备状态失败:", error);
+    } finally {
+      // 延迟一下，防止按钮连续点击
+      setTimeout(() => {
+        setIsTogglingReady(false);
+      }, 500);
+    }
+  };
+
+  // 模拟从API获取随机AI名字和头像
+  const fetchRandomAIProfile = async () => {
+    try {
+      // 模拟API返回数据
+      return new Promise<{name: string, avatar: string}>((resolve) => {
+        setTimeout(() => {
+          // 随机AI名字列表
+          const aiNames = [
+            "AI智者", "电子玩家", "数字灵魂", "逻辑思维", "矩阵行者",
+            "代码大师", "虚拟玩家", "像素战士", "量子思维", "自动决策",
+            "机器智能", "运算高手", "数据分析", "算法精灵", "神经网络"
+          ];
+          
+          // 使用最新的DiceBear API
+          const styles = ['bottts', 'pixel-art', 'icons', 'shapes', 'thumbs'];
+          const randomStyle = styles[Math.floor(Math.random() * styles.length)];
+          const seed = `ai-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+          const avatar = `https://api.dicebear.com/9.x/${randomStyle}/png?seed=${seed}`;
+          
+          // 随机选择一个名字
+          const randomName = aiNames[Math.floor(Math.random() * aiNames.length)] + 
+                            Math.floor(Math.random() * 100);
+          
+          resolve({
+            name: randomName,
+            avatar: avatar
+          });
+        }, 300); // 模拟网络延迟
+      });
+    } catch (error) {
+      console.error("获取AI档案失败:", error);
+      // 提供默认值以防API调用失败
+      return {
+        name: `AI玩家${Math.floor(Math.random() * 1000)}`,
+        avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=fallback-${Math.floor(Math.random() * 1000)}`
+      };
+    }
+  };
+
+  const fillWithAI = async () => {
+    if (!socket) {
+      console.error("Socket未连接");
+      return;
+    }
+    
+    try {
+      setIsLoadingAI(true);
+      const maxPlayers = 8;
+      const currentPlayerCount = users.length;
+      const aiNeeded = maxPlayers - currentPlayerCount;
+      
+      if (aiNeeded <= 0) {
+        socket.emit('send_msg', {
+          roomId,
+          message: "房间已满，无需添加AI玩家",
+          sender: "系统",
+          userId: "system"
+        });
+        return;
+      }
+      
+      // 生成AI玩家资料
+      const aiPlayers = [];
+      for (let i = 0; i < aiNeeded; i++) {
+        const aiProfile = await fetchRandomAIProfile();
+        
+        aiPlayers.push({
+          userId: `ai-${Date.now()}-${i}`,
+          username: aiProfile.name,
+          userAvatar: aiProfile.avatar,
+          isReady: true, 
+          isRoomOwner: false,
+          isAI: true
+        });
+      }
+      
+      // 发送到服务器
+      socket.emit('add_ai_players', {
+        roomId,
+        aiPlayers
+      });
+      
+    } catch (error) {
+      console.error("填充AI失败:", error);
+      if (socket) {
+        socket.emit('send_msg', {
+          roomId,
+          message: "添加AI玩家失败，请稍后重试",
+          sender: "系统",
+          userId: "system"
+        });
+      }
+    } finally {
+      setIsLoadingAI(false);
+    }
+  };
 
   return (
     <div>
@@ -15,7 +161,6 @@ const ChatRoom = () => {
           <div className="flex items-center space-x-2">
             <span className="text-xl font-bold">🐺 房间名称：{roomId} </span>
             <span className="text-gray-600">🎮 当前人数：{users.length}</span>
-            <span className="text-gray-600">🔒 密码房</span>
           </div>
           <div className="flex space-x-4">
             <button
@@ -23,12 +168,6 @@ const ChatRoom = () => {
               onClick={() => handleNavigation('/lobby')}
             >
               🏠 返回大厅
-            </button>
-            <button className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition duration-300">
-              ❓ 帮助
-            </button>
-            <button className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition duration-300">
-              📋 AI设置
             </button>
           </div>
         </div>
@@ -58,6 +197,18 @@ const ChatRoom = () => {
                     </span>
                   </div>
                 )}
+                <div className="absolute bottom-0 right-0 flex space-x-1">
+                  {((user as any).isAI || (user as any).isAI) && (
+                    <div className="bg-blue-500 text-white text-xs px-1 rounded-sm">
+                      AI
+                    </div>
+                  )}
+                  {user.isReady && (
+                    <div className="bg-green-500 text-white text-xs px-1 rounded-sm">
+                      ✓
+                    </div>
+                  )}
+                </div>
               </div>
             ))}
             
@@ -71,7 +222,6 @@ const ChatRoom = () => {
             ))}
           </div>
 
-          {/* 游戏配置区保持不变 */}
           <div>
             <h2 className="text-xl font-semibold mb-4">🎲 游戏配置 (经典8人局)</h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -113,7 +263,7 @@ const ChatRoom = () => {
             </div>
           </div>
 
-          {/* 聊天区保持不变 */}
+          {/* 聊天区 */}
           <div className="bg-gray-50 p-4 rounded-lg">
             <h2 className="text-xl font-semibold mb-4">💬 聊天区域</h2>
             <div className="h-64 overflow-y-auto border p-2 mb-4 bg-white rounded-lg shadow-inner">
@@ -159,20 +309,32 @@ const ChatRoom = () => {
 
           <div className="bg-gray-50 p-4 rounded-lg">
             <h2 className="text-xl font-semibold mb-4">🎮 房主控制区</h2>
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+            <div className="grid grid-cols-2 gap-4">
               <button
                 className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition duration-300"
               >
                 🎮 开始游戏
               </button>
-              <button className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition duration-300">
-                🔄 更换配置
-              </button>
-              <button className="bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600 transition duration-300">
-                🤖 一键填充AI
-              </button>
-              <button className="bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600 transition duration-300">
-                ⚙️ AI难度设置
+              <button 
+                onClick={fillWithAI}
+                disabled={isLoadingAI || users.length >= 8 || !socket}
+                className={`text-white px-4 py-2 rounded-lg transition duration-300 flex items-center justify-center ${
+                  isLoadingAI || users.length >= 8 || !socket
+                    ? 'bg-gray-400 cursor-not-allowed' 
+                    : 'bg-purple-500 hover:bg-purple-600'
+                }`}
+              >
+                {isLoadingAI ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    添加中...
+                  </>
+                ) : (
+                  <>🤖 一键填充AI</>
+                )}
               </button>
             </div>
           </div>
@@ -184,11 +346,14 @@ const ChatRoom = () => {
             <ul className="space-y-2">
               {users.map((user) => (
                 <li
-                  key={user.username}
+                  key={user.userId || user.username}
                   className="flex items-center justify-between p-2 bg-gray-50 rounded-lg"
                 >
                   <div className="flex items-center gap-2">
-                    <span>{user.isRoomOwner ? '👑 房主' : '👤'}</span>
+                    <span>
+                      {user.isRoomOwner ? '👑 房主' : 
+                       ((user as any).isAI || (user as any).isAI) ? '🤖 AI' : '👤'}
+                    </span>
                     <span className="truncate">{user.username}</span>
                   </div>
                   <span
@@ -219,26 +384,45 @@ const ChatRoom = () => {
               <li>🕒 讨论时间：3分钟</li>
               <li>🗣️ 发言时间：30秒</li>
               <li>👁️ 允许观战：是</li>
-              <li>🎙️ 语音聊天：开启</li>
-              <li>🤖 AI行为模式：真实</li>
             </ul>
           </div>
 
           <div className="bg-gray-50 p-4 rounded-lg">
             <h2 className="text-xl font-semibold mb-4">[玩家控制区]</h2>
-            <div className="flex space-x-4">
+            <div className="flex justify-center">
               <button
-                className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition duration-300"
+                onClick={toggleReady}
+                disabled={isTogglingReady}
+                className={`relative px-4 py-2 rounded-lg transition duration-300 text-white w-full ${
+                  isTogglingReady 
+                    ? 'bg-gray-400 cursor-not-allowed' 
+                    : isReady 
+                      ? 'bg-orange-500 hover:bg-orange-600' 
+                      : 'bg-green-500 hover:bg-green-600'
+                }`}
               >
-                ✅ 准备/取消
-              </button>
-              <button
-                className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition duration-300"
-              >
-                🔄 换房
-              </button>
-              <button className="bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600 transition duration-300">
-                📢 语音开关
+                {isTogglingReady ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    处理中...
+                  </>
+                ) : isReady ? (
+                  <>❌ 取消准备</>
+                ) : (
+                  <>✅ 准备</>
+                )}
+                {!isTogglingReady && (
+                  <span 
+                    className={`absolute inset-0 rounded-lg ${
+                      isReady 
+                        ? 'bg-orange-400' 
+                        : 'bg-green-400'
+                    } animate-pulse opacity-0 group-hover:opacity-20`}>
+                  </span>
+                )}
               </button>
             </div>
           </div>

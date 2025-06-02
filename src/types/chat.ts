@@ -1,28 +1,29 @@
 import { Socket } from 'socket.io-client';
 
-export type Message = {
+export interface Message {
   sender: string;
   message: string;
   timestamp: string;
   isSystem?: boolean;
-};
+}
 
-export type RoomInfo = {
+export interface RoomInfo {
   roomId: string;
   numUsers: number;
   creator: string;
   createdAt: string;
-};
+}
 
-export type User = {
+export interface User {
   userId: string;
   username: string;
   isRoomOwner: boolean;
   userAvatar: string;
-  isReady: boolean; 
-};
+  isReady: boolean;
+  isAI: boolean;
+}
 
-export type RoomContextType = {
+export interface RoomContextType {
   socket: Socket | null;
   username: string;
   roomId: string;
@@ -31,10 +32,11 @@ export type RoomContextType = {
   setMessage: (msg: string) => void;
   messages: Message[];
   users: User[];
+  setUsers: (users: User[]) => void; 
   rooms: RoomInfo[];
   create: boolean;
   setCreate: (value: boolean) => void;
   joinRoom: () => void;
   leaveRoom: () => void;
   sendMessage: (e: React.FormEvent) => void;
-};
+}
