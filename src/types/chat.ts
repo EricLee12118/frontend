@@ -1,5 +1,6 @@
 import { Socket } from 'socket.io-client';
 
+export type RoomState = 'waiting' | 'ready' | 'playing' | 'ended';
 export interface Message {
   sender: string;
   message: string;
@@ -23,6 +24,14 @@ export interface User {
   isAI: boolean;
 }
 
+export interface GameState {
+  isActive: boolean;
+  // round?: number;
+  // phase?: string;
+  // startTime?: string;
+  // endTime?: string;
+}
+
 export interface RoomContextType {
   socket: Socket | null;
   username: string;
@@ -39,4 +48,7 @@ export interface RoomContextType {
   joinRoom: () => void;
   leaveRoom: () => void;
   sendMessage: (e: React.FormEvent) => void;
+  roomState: RoomState;
+  gameState: GameState;
+  isRoomOwner: boolean;
 }

@@ -1,139 +1,130 @@
-// components/GameRoom.jsx
-import React from 'react';
+'use client';
 import { useRoomContext } from '@/contexts/ChatContext';
-import { motion } from 'framer-motion';
+import { useUser } from '@clerk/nextjs';
+
+import Header from '@/components/game_ready/Header';
+import PlayerGrid from '@/components/game_ready/PlayerGrid';
+import GameConfig from '@/components/game_ready/GameConfig';
+import ChatArea from '@/components/game_ready/ChatArea';
+import OwnerControls from '@/components/game_ready/OwnerControls';
+import PlayerList from '@/components/game_ready/PlayerList';
+import RoomSettings from '@/components/game_ready/RoomSettings';
+import GameStatus from '@/components/game_ready/GameStatus';
+import PlayerControls from '@/components/game_ready/PlayerControls';
+
+import { useAI } from '@/hooks/useAI';
+import { useGameControls } from '@/hooks/useGameControls';
 
 const GameRoom = () => {
-  const { messages, message, setMessage, sendMessage } = useRoomContext();
+  const { user } = useUser(); 
+  const { 
+    roomId, 
+    users, 
+    messages, 
+    message, 
+    setMessage, 
+    sendMessage, 
+    leaveRoom,
+    socket,
+    roomState, 
+  } = useRoomContext();
+  
+  // 从钩子中获取AI相关功能
+  const { 
+    isLoadingAI, 
+    fillWithAI, 
+    isAIUser 
+  } = useAI(socket, roomId, users, roomState);
+  
+  // 从钩子中获取游戏控制功能
+  const {
+    isReady,
+    isTogglingReady,
+    isStartingGame,
+    isEndingGame,
+    toggleReady,
+    startGame,
+    endGame
+  } = useGameControls(socket, roomId, users, user, roomState);
+
+  console.log("roomState:", roomState);
 
   return (
-    <div className="min-h-screen bg-gray-100 p-6">
-      <div className="grid grid-cols-12 gap-6">
-        {/* 左侧玩家列表 */}
-        {/* <div className="col-span-3 bg-white rounded-lg shadow-md p-4">
-          <h2 className="text-xl font-bold mb-4">玩家列表</h2>
-          <div className="space-y-3">
-            {users.map((user) => (
-              <motion.div
-                key={user.username}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="p-3 bg-gray-50 rounded-lg"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white">
-                      {user.username[0]}
-                    </div>
-                    <span className="font-medium">{user.username}</span>
-                  </div>
-                  <span className={`text-sm ${user.isAlive ? 'text-green-500' : 'text-red-500'}`}>
-                    {user.isAlive ? '存活' : '死亡'}
-                  </span>
-                </div>
-                {user.role && (
-                  <div className="mt-2 text-sm text-gray-600">
-                    角色: {user.role}
-                  </div>
-                )}
-              </motion.div>
-            ))}
-          </div>
-        </div> */}
+    <div>
+      {/* 头部信息 */}
+      <Header 
+        roomId={roomId} 
+        usersCount={users.length} 
+        roomState={roomState} 
+        onLeave={leaveRoom} 
+      />
 
-        {/* 中间游戏区域 */}
-        <div className="col-span-6 space-y-6">
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-bold mb-4">游戏状态</h2>
-            <div className="text-center p-4 bg-blue-50 rounded-lg">
-              <span className="text-lg">当前阶段：夜晚</span>
-              <div className="mt-2 text-sm text-gray-600">剩余时间：2:30</div>
-            </div>
+      {/* 主内容区域 */}
+      <div className="grid grid-cols-3 gap-6">
+        <div className="col-span-2 bg-white bg-opacity-90 p-6 rounded-lg shadow-md space-y-6">
+          {/* 状态提示 */}
+          <div className="text-center text-gray-600 text-lg">
+            {roomState === 'waiting' && '等待玩家加入...'}
+            {roomState === 'ready' && '所有玩家已准备就绪，等待游戏开始...'}
+            {roomState === 'playing' && '游戏进行中...'}
+            {roomState === 'ended' && '游戏已结束，可以开始新游戏'}
           </div>
+          
+          {/* 玩家头像区 */}
+          <PlayerGrid 
+            users={users} 
+            isAIUser={isAIUser} 
+          />
 
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-bold mb-4">操作区域</h2>
-            <div className="grid grid-cols-2 gap-4">
-              <button className="p-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition">
-                查看身份
-              </button>
-              <button className="p-3 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition">
-                技能操作
-              </button>
-            </div>
-          </div>
+          {/* 游戏配置 */}
+          <GameConfig />
 
-          {/* 聊天区域 */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-bold mb-4">游戏聊天</h2>
-            <div className="h-64 overflow-y-auto mb-4 space-y-2">
-              {messages.map((msg, idx) => (
-                <motion.div
-                  key={idx}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className={`p-2 rounded-lg ${
-                    msg.isSystem ? 'bg-yellow-50' : 'bg-gray-50'
-                  }`}
-                >
-                  <span className="font-bold">{msg.sender}: </span>
-                  <span>{msg.message}</span>
-                </motion.div>
-              ))}
-            </div>
-            <form onSubmit={sendMessage} className="flex space-x-2">
-              <input
-                type="text"
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                className="flex-1 p-2 border rounded-lg"
-                placeholder="输入消息..."
-              />
-              <button
-                type="submit"
-                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition"
-              >
-                发送
-              </button>
-            </form>
-          </div>
+          {/* 聊天区 */}
+          <ChatArea 
+            messages={messages} 
+            message={message} 
+            setMessage={setMessage} 
+            sendMessage={sendMessage} 
+            leaveRoom={leaveRoom} 
+            roomState={roomState} 
+          />
+
+          {/* 房主控制区 */}
+          <OwnerControls 
+            roomState={roomState}
+            startGame={startGame}
+            endGame={endGame}
+            fillWithAI={fillWithAI}
+            isStartingGame={isStartingGame}
+            isEndingGame={isEndingGame}
+            isLoadingAI={isLoadingAI}
+            users={users}
+            socket={socket}
+          />
         </div>
 
-        {/* 右侧游戏信息 */}
-        <div className="col-span-3 space-y-6">
-          <div className="bg-white rounded-lg shadow-md p-4">
-            <h2 className="text-xl font-bold mb-4">游戏信息</h2>
-            <div className="space-y-2">
-              <div className="p-2 bg-gray-50 rounded">
-                <div className="font-medium">回合数：3</div>
-                <div className="text-sm text-gray-600">死亡玩家：2人</div>
-              </div>
-              <div className="p-2 bg-gray-50 rounded">
-                <div className="font-medium">身份信息</div>
-                <div className="text-sm text-gray-600">
-                  <div>🐺 狼人 x 2</div>
-                  <div>👥 村民 x 3</div>
-                  <div>🔍 预言家 x 1</div>
-                  <div>💊 女巫 x 1</div>
-                </div>
-              </div>
-            </div>
-          </div>
+        <div className="col-span-1 bg-white bg-opacity-90 p-6 rounded-lg shadow-md">
+          {/* 玩家列表 */}
+          <PlayerList 
+            users={users} 
+            isAIUser={isAIUser} 
+          />
 
-          <div className="bg-white rounded-lg shadow-md p-4">
-            <h2 className="text-xl font-bold mb-4">游戏记录</h2>
-            <div className="space-y-2 text-sm">
-              {[
-                "第3夜：预言家查验了玩家5",
-                "第2夜：女巫使用了解药",
-                "第1夜：狼人击杀了玩家2"
-              ].map((log, idx) => (
-                <div key={idx} className="p-2 bg-gray-50 rounded">
-                  {log}
-                </div>
-              ))}
-            </div>
-          </div>
+          {/* 房间设置 */}
+          <RoomSettings />
+
+          {/* 游戏状态 - 仅在游戏中显示 */}
+          {roomState === 'playing' && (
+            <GameStatus />
+          )}
+
+          {/* 玩家控制区 */}
+          <PlayerControls 
+            toggleReady={toggleReady}
+            isTogglingReady={isTogglingReady}
+            isReady={isReady}
+            roomState={roomState}
+          />
         </div>
       </div>
     </div>

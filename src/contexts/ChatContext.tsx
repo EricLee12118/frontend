@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { useUser } from '@clerk/nextjs';
-import { RoomContextType, Message, RoomInfo, User } from '@/types/chat'; 
+import { RoomContextType, Message, RoomInfo, User, RoomState, GameState } from '@/types/chat'; 
 
 const RoomContext = createContext<RoomContextType | null>(null);
 
@@ -26,6 +26,19 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const [shouldAutoJoin, setShouldAutoJoin] = useState(true);
   const [create, setCreate] = useState(false);
   const roomIdRef = useRef(roomId);
+  const [roomState, setRoomState] = useState<RoomState>('waiting');
+  const [gameState, setGameState] = useState<GameState>({ isActive: false });
+  const [isRoomOwner, setIsRoomOwner] = useState(false);
+
+  const handleRoomState = (state: { state: RoomState; creator: string }) => {
+    setRoomState(state.state);
+    setIsRoomOwner(state.creator === username);
+  };
+
+  const handleGameState = (state: GameState) => {
+    setGameState(state);
+  };
+
   roomIdRef.current = roomId;
 
   useEffect(() => {
@@ -78,7 +91,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     newSocket.on('receive_msg', (msg: Message) => setMessages(prev => [...prev, msg]));    
     newSocket.on('room_users', (receivedUsers: User[]) => setUsers(receivedUsers));
     newSocket.on('message_history', setMessages);
-    
+    newSocket.on('room_state', handleRoomState);
+    newSocket.on('game_state', handleGameState);
     const errorHandler = (error: string) => alert(error);
     newSocket.on('validation_error', errorHandler);
     newSocket.on('room_full', errorHandler);
@@ -96,6 +110,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       newSocket.off('room_users', setUsers);
       newSocket.off('message_history', setMessages);
       newSocket.off('validation_error', errorHandler);
+      // 在清理函数中移除事件监听
+      newSocket.off('room_state', handleRoomState);
+      newSocket.off('game_state', handleGameState);
       setIsConnecting(false);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -156,7 +173,10 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     joinRoom,
     leaveRoom,
     sendMessage,
-    setUsers
+    setUsers,
+    roomState,
+    gameState,
+    isRoomOwner
   };
 
   return <RoomContext.Provider value={value}>{children}</RoomContext.Provider>;
