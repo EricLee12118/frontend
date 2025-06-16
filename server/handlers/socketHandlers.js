@@ -1,4 +1,3 @@
-// handlers/socketHandlers.js
 import Validator from '../validators/Validator.js';
 import RoomService from '../services/RoomService.js';
 import logger from '../config/logger.js';

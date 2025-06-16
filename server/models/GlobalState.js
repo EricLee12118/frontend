@@ -13,29 +13,25 @@ class GlobalState {
         return GlobalState.instance || new GlobalState();
     }
 
-    // 创建房间
     createRoom(roomId, creator) {
         const room = new Room(roomId, creator);
         this.rooms.set(roomId, room);
         return room;
     }
 
-    // 获取房间
     getRoom(roomId) {
         return this.rooms.get(roomId);
     }
 
-    // 删除房间
     deleteRoom(roomId) {
         return this.rooms.delete(roomId);
     }
 
-    // 获取所有房间
     getAllRooms() {
         return Array.from(this.rooms.values());
     }
 
-    // 检查用户是否在频率限制内
+
     checkRateLimit(socketId) {
         const currentTime = Date.now();
         this.rateLimit[socketId] = (this.rateLimit[socketId] || []).filter(

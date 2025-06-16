@@ -51,7 +51,7 @@ const GameRoom = () => {
 
   return (
     <div>
-      {/* 头部信息 */}
+      {/* 头部信息始终显示 */}
       <Header 
         roomId={roomId} 
         usersCount={users.length} 
@@ -59,74 +59,72 @@ const GameRoom = () => {
         onLeave={leaveRoom} 
       />
 
-      {/* 主内容区域 */}
-      <div className="grid grid-cols-3 gap-6">
-        <div className="col-span-2 bg-white bg-opacity-90 p-6 rounded-lg shadow-md space-y-6">
-          {/* 状态提示 */}
-          <div className="text-center text-gray-600 text-lg">
-            {roomState === 'waiting' && '等待玩家加入...'}
-            {roomState === 'ready' && '所有玩家已准备就绪，等待游戏开始...'}
-            {roomState === 'playing' && '游戏进行中...'}
-            {roomState === 'ended' && '游戏已结束，可以开始新游戏'}
+      {roomState === 'playing' ? (
+        /* 游戏进行中只显示GameStatus */
+        <GameStatus />
+      ) : (
+        /* 其他状态显示原有内容 */
+        <div className="grid grid-cols-3 gap-6">
+          <div className="col-span-2 bg-white bg-opacity-90 p-6 rounded-lg shadow-md space-y-6">
+            {/* 状态提示 */}
+            <div className="text-center text-gray-600 text-lg">
+              {roomState === 'waiting' && '等待玩家加入...'}
+              {roomState === 'ready' && '所有玩家已准备就绪，等待游戏开始...'}
+              {roomState === 'ended' && '游戏已结束，可以开始新游戏'}
+            </div>
+            
+            {/* 玩家头像区 */}
+            <PlayerGrid 
+              users={users} 
+              isAIUser={isAIUser} 
+            />
+
+            {/* 游戏配置 */}
+            <GameConfig />
+            {/* 聊天区 */}
+            <ChatArea 
+              messages={messages} 
+              message={message} 
+              setMessage={setMessage} 
+              sendMessage={sendMessage} 
+              leaveRoom={leaveRoom} 
+              roomState={roomState} 
+            />
+
+            {/* 房主控制区 */}
+            <OwnerControls 
+              roomState={roomState}
+              startGame={startGame}
+              endGame={endGame}
+              fillWithAI={fillWithAI}
+              isStartingGame={isStartingGame}
+              isEndingGame={isEndingGame}
+              isLoadingAI={isLoadingAI}
+              users={users}
+              socket={socket}
+            />
           </div>
-          
-          {/* 玩家头像区 */}
-          <PlayerGrid 
-            users={users} 
-            isAIUser={isAIUser} 
-          />
 
-          {/* 游戏配置 */}
-          <GameConfig />
+          <div className="col-span-1 bg-white bg-opacity-90 p-6 rounded-lg shadow-md">
+            {/* 玩家列表 */}
+            <PlayerList 
+              users={users} 
+              isAIUser={isAIUser} 
+            />
 
-          {/* 聊天区 */}
-          <ChatArea 
-            messages={messages} 
-            message={message} 
-            setMessage={setMessage} 
-            sendMessage={sendMessage} 
-            leaveRoom={leaveRoom} 
-            roomState={roomState} 
-          />
+            {/* 房间设置 */}
+            <RoomSettings />
 
-          {/* 房主控制区 */}
-          <OwnerControls 
-            roomState={roomState}
-            startGame={startGame}
-            endGame={endGame}
-            fillWithAI={fillWithAI}
-            isStartingGame={isStartingGame}
-            isEndingGame={isEndingGame}
-            isLoadingAI={isLoadingAI}
-            users={users}
-            socket={socket}
-          />
+            {/* 玩家控制区 */}
+            <PlayerControls 
+              toggleReady={toggleReady}
+              isTogglingReady={isTogglingReady}
+              isReady={isReady}
+              roomState={roomState}
+            />
+          </div>
         </div>
-
-        <div className="col-span-1 bg-white bg-opacity-90 p-6 rounded-lg shadow-md">
-          {/* 玩家列表 */}
-          <PlayerList 
-            users={users} 
-            isAIUser={isAIUser} 
-          />
-
-          {/* 房间设置 */}
-          <RoomSettings />
-
-          {/* 游戏状态 - 仅在游戏中显示 */}
-          {roomState === 'playing' && (
-            <GameStatus />
-          )}
-
-          {/* 玩家控制区 */}
-          <PlayerControls 
-            toggleReady={toggleReady}
-            isTogglingReady={isTogglingReady}
-            isReady={isReady}
-            roomState={roomState}
-          />
-        </div>
-      </div>
+      )}
     </div>
   );
 };

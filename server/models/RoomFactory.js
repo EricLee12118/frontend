@@ -22,6 +22,9 @@ class Room {
             main: {
                 messages: []
             },
+            game: {
+                messages: []
+            }, 
             werewolf: {
                 messages: []
             }
@@ -93,7 +96,6 @@ class Room {
         return this;
     }
 
-    // 结束游戏
     endGame() {
         this.state = 'ended';
         this.game.isActive = false;

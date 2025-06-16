@@ -9,6 +9,7 @@ interface UserType {
   isAI?: boolean;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const useGameControls = (socket: Socket | null, roomId: string, users: UserType[], user: any, roomState: string) => {
   const [isReady, setIsReady] = useState(false);
   const [isTogglingReady, setIsTogglingReady] = useState(false);
