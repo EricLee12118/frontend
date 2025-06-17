@@ -1,7 +1,16 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { useUser } from '@clerk/nextjs';
-import { RoomContextType, Message, RoomInfo, User, RoomState, GameState } from '@/types/chat'; 
+import { 
+  RoomContextType, 
+  Message, 
+  RoomInfo, 
+  User, 
+  RoomState, 
+  GameState,
+  RoleInfo 
+} from '@/types/chat'; 
 
 const RoomContext = createContext<RoomContextType | null>(null);
 
@@ -27,16 +36,41 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const [create, setCreate] = useState(false);
   const roomIdRef = useRef(roomId);
   const [roomState, setRoomState] = useState<RoomState>('waiting');
-  const [gameState, setGameState] = useState<GameState>({ isActive: false });
+  const [gameState, setGameState] = useState<GameState>({ 
+    isActive: false,
+    round: 0,
+    phase: null,
+    startTime: null,
+    endTime: null
+  });
   const [isRoomOwner, setIsRoomOwner] = useState(false);
+  const [roleInfo, setRoleInfo] = useState<RoleInfo | null>(null);
+  const [gameMessages, setGameMessages] = useState<Message[]>([]);
+  const [seerResult, setSeerResult] = useState<any>(null);
 
-  const handleRoomState = (state: { state: RoomState; creator: string }) => {
+  const handleRoomState = (state: { 
+    state: RoomState; 
+    creator: string;
+    creatorId: string;
+  }) => {
     setRoomState(state.state);
-    setIsRoomOwner(state.creator === username);
+    setIsRoomOwner(!!user?.id && state.creatorId === user.id);
   };
 
   const handleGameState = (state: GameState) => {
     setGameState(state);
+  };
+
+  const handleRoleInfo = (info: RoleInfo) => {
+    setRoleInfo(info);
+  };
+
+  const handleSeerResult = (result: any) => {
+    setSeerResult(result);
+  };
+
+  const handleGameMessage = (msg: Message) => {
+    setGameMessages(prev => [...prev, msg]);
   };
 
   roomIdRef.current = roomId;
@@ -93,6 +127,13 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     newSocket.on('message_history', setMessages);
     newSocket.on('room_state', handleRoomState);
     newSocket.on('game_state', handleGameState);
+    
+    // 游戏相关事件监听
+    newSocket.on('role_info', handleRoleInfo);
+    newSocket.on('seer_result', handleSeerResult);
+    newSocket.on('game_message', handleGameMessage);
+    newSocket.on('role_assigned', handleRoleInfo);
+    
     const errorHandler = (error: string) => alert(error);
     newSocket.on('validation_error', errorHandler);
     newSocket.on('room_full', errorHandler);
@@ -106,17 +147,29 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       newSocket.off('connect', handleConnect);
       newSocket.off('reconnect', handleReconnect);
       newSocket.off('rooms_list', setRooms);
-      newSocket.off('receive_msg', (msg: Message) => setMessages(prev => [...prev, msg]));
-      newSocket.off('room_users', setUsers);
-      newSocket.off('message_history', setMessages);
+      newSocket.off('receive_msg');
+      newSocket.off('room_users');
+      newSocket.off('message_history');
       newSocket.off('validation_error', errorHandler);
-      // 在清理函数中移除事件监听
-      newSocket.off('room_state', handleRoomState);
-      newSocket.off('game_state', handleGameState);
+      
+      // 清理游戏相关事件监听
+      newSocket.off('room_state');
+      newSocket.off('game_state');
+      newSocket.off('role_info');
+      newSocket.off('seer_result');
+      newSocket.off('game_message');
+      newSocket.off('role_assigned');
+      
       setIsConnecting(false);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, isLoaded]);
+
+  useEffect(() => {
+    if (socket && roomState === 'playing' && !roleInfo) {
+      socket.emit('get_role', { roomId });
+    }
+  }, [socket, roomState, roleInfo, roomId]);
 
   const joinRoom = () => {
     setCreate(true);
@@ -139,10 +192,12 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       setRoomId('');
       setShouldAutoJoin(false);
       setCreate(false);
+      setRoleInfo(null);
+      setGameMessages([]);
+      setSeerResult(null);
     }
   };
   
-
   const sendMessage = (e: React.FormEvent) => {
     e.preventDefault();
     if (message.trim() && socket && roomId.trim() && username.trim()) {
@@ -155,6 +210,36 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       setMessage('');
     } else {
       alert('请填写消息内容。');
+    }
+  };
+  
+  const getRoleInfo = () => {
+    if (socket && roomId) {
+      socket.emit('get_role', { roomId });
+    }
+  };
+
+  const nextRound = () => {
+    if (socket && roomId && isRoomOwner) {
+      socket.emit('next_round', { roomId });
+    }
+  };
+
+  const changeGamePhase = (phase: string) => {
+    if (socket && roomId && isRoomOwner) {
+      socket.emit('change_phase', { roomId, phase });
+    }
+  };
+
+  const castVote = (targetId: string) => {
+    if (socket && roomId) {
+      socket.emit('player_vote', { roomId, targetId });
+    }
+  };
+
+  const seerCheckPlayer = (targetId: string) => {
+    if (socket && roomId && roleInfo?.role === 'seer') {
+      socket.emit('seer_check', { roomId, targetId });
     }
   };
 
@@ -176,7 +261,17 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     setUsers,
     roomState,
     gameState,
-    isRoomOwner
+    isRoomOwner,
+    
+    // 新增的游戏相关属性和方法
+    roleInfo,
+    gameMessages,
+    seerResult,
+    getRoleInfo,
+    nextRound,
+    changeGamePhase,
+    castVote,
+    seerCheckPlayer,
   };
 
   return <RoomContext.Provider value={value}>{children}</RoomContext.Provider>;

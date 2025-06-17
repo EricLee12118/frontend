@@ -10,12 +10,12 @@ class RoomService {
     }
 
     // 创建或获取房间
-    getOrCreateRoom(roomId, creator) {
+    getOrCreateRoom(roomId, creatorUsername, creatorUserId) {
         let room = this.globalState.getRoom(roomId);
         
         if (!room) {
-            room = this.globalState.createRoom(roomId, creator);
-            logger.info(`房间 "${roomId}" 已创建，创建者: ${creator}`);
+            room = this.globalState.createRoom(roomId, creatorUsername, creatorUserId);
+            logger.info(`房间 "${roomId}" 已创建，创建者: ${creatorUsername}`);
         }
         
         return room;
@@ -25,7 +25,7 @@ class RoomService {
     joinRoom(socket, roomId, username) {
         if (socket.roomId === roomId) return { success: true, message: '已在该房间中' };
 
-        const room = this.getOrCreateRoom(roomId, username);
+        const room = this.getOrCreateRoom(roomId, username, socket.userId);
         const socketRoom = this.io.sockets.adapter.rooms.get(roomId);
         
         // 检查房间是否已满
@@ -43,14 +43,14 @@ class RoomService {
         socket.roomId = roomId;
         
         // 添加用户到房间
-        room.addUser({
+        const userData = {
             userId: socket.userId,
             username: socket.username,
             userAvatar: socket.userAvatar || '',
-            isReady: false,
-            isRoomOwner: room.creator === socket.username,
-            isAI: false
-        });
+            isAI: socket.isAI || false
+        };
+        
+        room.addUser(userData);
         
         logger.info(`用户 "${username}" 加入了房间 "${roomId}"`);
         
@@ -73,16 +73,19 @@ class RoomService {
         const room = this.globalState.getRoom(roomId);
         
         if (room) {
+            // 检查是否是房主
+            const isCreator = room.creatorId === socket.userId;
+            
             // 从房间中移除用户
             room.removeUser(socket.userId);
             
             // 如果用户是房主且房间还有其他人，转移房主
-            if (room.creator === socket.username && room.users.length > 0) {
-                const newOwner = room.users.find(u => !u.isAI);
-                if (newOwner) {
-                    room.creator = newOwner.username;
-                    newOwner.isRoomOwner = true;
-                    logger.info(`房间 "${roomId}" 的房主已转移到 "${newOwner.username}"`);
+            if (isCreator && room.users.size > 0) {
+                // 寻找非AI的第一个用户作为新房主
+                const nonAIUsers = Array.from(room.users.values()).filter(u => !u.isAI);
+                if (nonAIUsers.length > 0) {
+                    room.transferOwnership(nonAIUsers[0].userId);
+                    logger.info(`房间 "${roomId}" 的房主已转移到 "${nonAIUsers[0].username}"`);
                 }
             }
         }
@@ -92,10 +95,10 @@ class RoomService {
         logger.info(`用户 "${socket.username}" 离开了房间 "${roomId}"`);
         
         // 如果房间为空，删除房间
-        if (!this.io.sockets.adapter.rooms.get(roomId)) {
+        if (!this.io.sockets.adapter.rooms.get(roomId) || (room && room.users.size === 0)) {
             this.globalState.deleteRoom(roomId);
             logger.info(`房间 "${roomId}" 已删除（无人在线）`);
-        } else {
+        } else if (room) {
             // 广播更新
             this.eventBroadcaster.broadcastSystemMessage(roomId, `用户 "${socket.username}" 离开了房间`);
             this.eventBroadcaster.broadcastRoomUsers(roomId);
@@ -152,7 +155,6 @@ class RoomService {
         if (user) {
             logger.info(`用户 "${socket.username}" 在房间 "${roomId}" 中${user.isReady ? '准备就绪' : '取消准备'}`);
             
-            // 广播更新
             this.eventBroadcaster.broadcastRoomUsers(roomId);
             this.eventBroadcaster.broadcastRoomState(roomId);
             
@@ -173,7 +175,7 @@ class RoomService {
         }
         
         // 检查房主权限
-        if (room.creator !== socket.username) {
+        if (room.creatorId !== socket.userId) {
             return { success: false, message: '只有房主可以添加AI玩家' };
         }
         
@@ -199,7 +201,7 @@ class RoomService {
         }
         
         // 检查房主权限
-        if (room.creator !== socket.username) {
+        if (room.creatorId !== socket.userId) {
             return { success: false, message: '只有房主可以开始游戏' };
         }
         
@@ -216,6 +218,21 @@ class RoomService {
             this.eventBroadcaster.broadcastSystemMessage(roomId, '游戏开始！');
             this.eventBroadcaster.broadcastRoomState(roomId);
             this.eventBroadcaster.broadcastGameState(roomId);
+            
+            // 向每个玩家发送他们的角色信息
+            room.users.forEach((user, userId) => {
+                const role = room.getUserRole(userId);
+                if (role) {
+                    const socket = this.io.sockets.sockets.get(this.globalState.activeUsers.get(userId));
+                    if (socket && !user.isAI) {
+                        socket.emit('role_assigned', {
+                            role,
+                            position: room.getUserPosition(userId),
+                            description: room.game.getRoleDescription(role)
+                        });
+                    }
+                }
+            });
             
             return { success: true };
         } catch (error) {
@@ -234,7 +251,7 @@ class RoomService {
         }
         
         // 检查房主权限
-        if (room.creator !== socket.username) {
+        if (room.creatorId !== socket.userId) {
             return { success: false, message: '只有房主可以结束游戏' };
         }
         
@@ -264,7 +281,7 @@ class RoomService {
         }
         
         // 检查房主权限
-        if (room.creator !== socket.username) {
+        if (room.creatorId !== socket.userId) {
             return { success: false, message: '只有房主可以重置房间' };
         }
         

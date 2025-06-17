@@ -6,13 +6,18 @@ export interface Message {
   message: string;
   timestamp: string;
   isSystem?: boolean;
+  content?: string;
+  type?: string;
 }
 
 export interface RoomInfo {
   roomId: string;
-  numUsers: number;
+  userCount: number;
+  humanCount: number;
+  aiCount: number;
   creator: string;
   createdAt: string;
+  state: RoomState;
 }
 
 export interface User {
@@ -22,14 +27,25 @@ export interface User {
   userAvatar: string;
   isReady: boolean;
   isAI: boolean;
+  hasRole?: boolean;
+  isAlive?: boolean;
 }
 
 export interface GameState {
   isActive: boolean;
-  // round?: number;
-  // phase?: string;
-  // startTime?: string;
-  // endTime?: string;
+  round?: number;
+  phase?: string | null;
+  startTime?: string | null;
+  endTime?: string | null;
+  duration?: number;
+  playerCount?: number;
+  deadPlayersCount?: number;
+}
+
+export interface RoleInfo {
+  role: string;
+  position?: number;
+  description: string;
 }
 
 export interface RoomContextType {
@@ -51,4 +67,15 @@ export interface RoomContextType {
   roomState: RoomState;
   gameState: GameState;
   isRoomOwner: boolean;
+  
+  // 新增的游戏相关属性和方法
+  roleInfo: RoleInfo | null;
+  gameMessages: Message[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  seerResult: any;
+  getRoleInfo: () => void;
+  nextRound: () => void;
+  changeGamePhase: (phase: string) => void;
+  castVote: (targetId: string) => void;
+  seerCheckPlayer: (targetId: string) => void;
 }

@@ -12,13 +12,15 @@ class EventBroadcaster {
     broadcastRoomsList() {
         const roomsList = this.globalState.getAllRooms()
             .map(room => {
-                const numUsers = this.io.sockets.adapter.rooms.get(room.roomId)?.size || 0;
-                const aiCount = room.users.filter(u => u.isAI || u.isAi).length;
-                const totalPlayers = numUsers + aiCount;
+                const userCount = room.users.size;
+                const aiCount = Array.from(room.users.values()).filter(u => u.isAI).length;
+                const humanCount = userCount - aiCount;
                 
-                return totalPlayers > 0 ? {
+                return userCount > 0 ? {
                     roomId: room.roomId,
-                    numUsers: totalPlayers,
+                    userCount: userCount,
+                    humanCount: humanCount,
+                    aiCount: aiCount,
                     creator: room.creator,
                     createdAt: room.createdAt,
                     state: room.state
@@ -37,9 +39,9 @@ class EventBroadcaster {
             return;
         }
         
-        // 确保我们发送所有用户，包括AI和真实用户
-        this.io.to(roomId).emit('room_users', room.users);
-        logger.debug(`已广播房间 "${roomId}" 的用户列表：${room.users.length} 个用户`);
+        // 发送用户列表
+        this.io.to(roomId).emit('room_users', room.getUsersArray());
+        logger.debug(`已广播房间 "${roomId}" 的用户列表：${room.users.size} 个用户`);
     }
 
     // 广播房间状态
@@ -51,13 +53,16 @@ class EventBroadcaster {
             return;
         }
         
+        const readyCount = Array.from(room.users.values()).filter(u => u.isReady || u.isAI).length;
+        
         const stateData = {
             roomId: room.roomId,
             state: room.state,
             creator: room.creator,
-            userCount: room.users.length,
+            creatorId: room.creatorId,
+            userCount: room.users.size,
             maxPlayers: 8,
-            readyCount: room.users.filter(u => u.isReady || u.isAI).length
+            readyCount: readyCount
         };
         
         this.io.to(roomId).emit('room_state', stateData);
@@ -73,13 +78,7 @@ class EventBroadcaster {
             return;
         }
         
-        const gameData = {
-            isActive: room.game.isActive,
-            round: room.game.round,
-            phase: room.game.currentPhase,
-            startTime: room.game.startTime,
-            endTime: room.game.endTime
-        };
+        const gameData = room.game.getGameState();
         
         this.io.to(roomId).emit('game_state', gameData);
         logger.debug(`已广播房间 "${roomId}" 的游戏状态`);

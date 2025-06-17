@@ -43,7 +43,7 @@ export const RoomsList = () => {
               <h3 className="text-lg font-semibold mb-2">{room.roomId}</h3>
               <ul className="text-sm text-gray-600">
                 <li>房间名 {room.roomId}</li>
-                <li>人数 {room.numUsers}</li>
+                <li>人数 {room.userCount}</li>
                 <li>房主 {room.creator}</li>
                 <li>创建时间 {room.createdAt}</li>
               </ul>

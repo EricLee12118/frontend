@@ -1,11 +1,12 @@
-import Room from './RoomFactory.js';
+// models/GlobalState.js
+import Room from './Room.js';
 
 class GlobalState {
     constructor() {
         if (GlobalState.instance) return GlobalState.instance;
         this.rooms = new Map();
         this.rateLimit = {};
-        this.activeUsers = new Map();
+        this.activeUsers = new Map(); // userId -> socketId
         GlobalState.instance = this;
     }
 
@@ -13,8 +14,8 @@ class GlobalState {
         return GlobalState.instance || new GlobalState();
     }
 
-    createRoom(roomId, creator) {
-        const room = new Room(roomId, creator);
+    createRoom(roomId, creatorUsername, creatorUserId) {
+        const room = new Room(roomId, creatorUsername, creatorUserId);
         this.rooms.set(roomId, room);
         return room;
     }
@@ -30,7 +31,6 @@ class GlobalState {
     getAllRooms() {
         return Array.from(this.rooms.values());
     }
-
 
     checkRateLimit(socketId) {
         const currentTime = Date.now();
