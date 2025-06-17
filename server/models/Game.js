@@ -1,5 +1,5 @@
 import logger from '../config/logger.js';
-// models/Game.js
+
 class Game {
     constructor(room) {
         this.room = room;
@@ -8,8 +8,9 @@ class Game {
         this.endTime = null;
         this.round = 0;
         this.currentPhase = null;
-        this.roleAssignments = {}; // userId -> role
+        this.roleAssignments = {};
         this.positionAssignments = {};
+        this.votes = {};
         this.settings = {
             werewolves: 3,
             villagers: 3,
@@ -18,27 +19,22 @@ class Game {
         };
     }
 
-    // 开始游戏
     start() {
         this.isActive = true;
         this.startTime = new Date().toISOString();
         this.round = 1;
         this.currentPhase = 'night';
-
+        this.votes = {};
         this.assignRoles();
-        
         return this;
     }
 
-    // 结束游戏
     end() {
         this.isActive = false;
         this.endTime = new Date().toISOString();
-        
         return this;
     }
 
-    // 重置游戏
     reset() {
         this.isActive = false;
         this.round = 0;
@@ -47,6 +43,7 @@ class Game {
         this.endTime = null;
         this.roleAssignments = {};
         this.positionAssignments = {};
+        this.votes = {};
         return this;
     }
 
@@ -55,54 +52,56 @@ class Game {
         this.positionAssignments = {};
 
         const users = Array.from(this.room.users.values());
+        if (users.length === 0) return;
         
+        // 准备角色池
         const { werewolves, villagers, seer, witch } = this.settings;
+        let rolePool = [];
         
-        let rolePool = [
-            ...Array(werewolves).fill('werewolf'),
-            ...Array(villagers).fill('villager')
-        ];
-        
+        if (werewolves > 0) rolePool.push(...Array(werewolves).fill('werewolf'));
+        if (villagers > 0) rolePool.push(...Array(villagers).fill('villager'));
         if (seer > 0) rolePool.push(...Array(seer).fill('seer'));
         if (witch > 0) rolePool.push(...Array(witch).fill('witch'));
         
-        if (rolePool.length < users.length) {
-            const additionalVillagers = users.length - rolePool.length;
-            rolePool.push(...Array(additionalVillagers).fill('villager'));
-        }
+        // 调整角色池大小
+        while (rolePool.length < users.length) rolePool.push('villager');
+        if (rolePool.length > users.length) rolePool = rolePool.slice(0, users.length);
         
-        for (let i = rolePool.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [rolePool[i], rolePool[j]] = [rolePool[j], rolePool[i]];
-        }
+        // 随机打乱角色池
+        this.shuffleArray(rolePool);
         
+        // 生成位置数组
         const positions = Array.from({ length: users.length }, (_, i) => i + 1);
+        this.shuffleArray(positions);
         
-        for (let i = positions.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [positions[i], positions[j]] = [positions[j], positions[i]];
-        }
-        
+        // 分配角色和位置
         users.forEach((user, index) => {
-            if (index < rolePool.length) {
-                const role = rolePool[index];
-                const position = positions[index];
-                
-                user.setRole(role);
-                user.setPos(position);
-                this.roleAssignments[user.userId] = role;
-                this.positionAssignments[user.userId] = position;
-            }
-        });        
-        logger.debug('已分配角色',this.roleAssignments, this.positionAssignments);
+            const role = rolePool[index];
+            const position = positions[index];
+            
+            user.setRole(role);
+            user.setPos(position);
+            this.roleAssignments[user.userId] = role;
+            this.positionAssignments[user.userId] = position;
+        });
+        
+        logger.debug('角色和位置分配完成', this.roleAssignments, this.positionAssignments);
     }
 
-    getUserRole(userId) {
-        return this.roleAssignments[userId] || null;
+    // 辅助方法：随机打乱数组
+    shuffleArray(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
+        }
+        return array;
     }
-    
-    getUserPosition(userId) {
-        return this.positionAssignments[userId] || null;
+
+    getUserRoleInfo(userId) {
+        return {
+            role: this.roleAssignments[userId] || null,
+            position: this.positionAssignments[userId] || null
+        };
     }
 
     getGameState() {
@@ -124,6 +123,25 @@ class Game {
         };
         
         return descriptions[role] || '角色描述未定义';
+    }
+
+    // 记录投票
+    recordVote(voterId, targetId) {
+        if (!this.votes) this.votes = {};
+        this.votes[voterId] = targetId;
+        return Object.keys(this.votes).length;
+    }
+
+    // 获取角色分配统计
+    getRoleAssignmentStats() {
+        const roles = Object.values(this.roleAssignments);
+        return {
+            total: roles.length,
+            werewolves: roles.filter(r => r === 'werewolf').length,
+            villagers: roles.filter(r => r === 'villager').length,
+            seers: roles.filter(r => r === 'seer').length,
+            witches: roles.filter(r => r === 'witch').length
+        };
     }
 }
 

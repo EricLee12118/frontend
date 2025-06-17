@@ -221,14 +221,14 @@ class RoomService {
             
             // 向每个玩家发送他们的角色信息
             room.users.forEach((user, userId) => {
-                const role = room.getUserRole(userId);
+                const role = room.getUserRoleInfo(userId);
                 if (role) {
                     const socket = this.io.sockets.sockets.get(this.globalState.activeUsers.get(userId));
                     if (socket && !user.isAI) {
                         socket.emit('role_assigned', {
-                            role,
-                            position: room.getUserPosition(userId),
-                            description: room.game.getRoleDescription(role)
+                            role: role.role,
+                            position: role.position,
+                            description: room.game.getRoleDescription(role.role)
                         });
                     }
                 }

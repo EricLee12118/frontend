@@ -1,4 +1,3 @@
-// models/User.js
 class User {
     constructor({userId, username, userAvatar = '', isAI = false, isReady = false, isRoomOwner = false}) {
         this.userId = userId;
@@ -7,8 +6,8 @@ class User {
         this.isAI = isAI;
         this.isReady = isReady;
         this.isRoomOwner = isRoomOwner;
-        this.role = null; // 游戏角色
-        this.isAlive = true; // 玩家是否在游戏中存活
+        this.role = null;
+        this.isAlive = true;
         this.pos = null;
     }
 
@@ -17,25 +16,11 @@ class User {
         return this.isReady;
     }
 
-    setRole(role) {
-        this.role = role;
-    }
-
-    clearRole() {
-        this.role = null;
-    }
-
-    setRoomOwner(isOwner) {
-        this.isRoomOwner = isOwner;
-    }
-
-    setPos(pos) {
-        this.pos = pos;
-    }
-
-    getPos() {
-        return this.pos;
-    }
+    setRole(role) { this.role = role; }
+    clearRole() { this.role = null; }
+    setRoomOwner(isOwner) { this.isRoomOwner = isOwner; }
+    setPos(pos) { this.pos = pos; }
+    getPos() { return this.pos; }
     
     toJSON() {
         return {
@@ -52,10 +37,7 @@ class User {
     }
 
     getFullData() {
-        return {
-            ...this.toJSON(),
-            role: this.role
-        };
+        return { ...this.toJSON(), role: this.role };
     }
 }
 
