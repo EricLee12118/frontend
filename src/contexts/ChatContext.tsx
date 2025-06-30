@@ -11,7 +11,9 @@ import {
   GameState,
   RoleInfo,
   NightActionData,
-  VoteStats
+  VoteStats,
+  PhaseProgress,
+  GameNotification
 } from '@/types/chat'; 
 
 const RoomContext = createContext<RoomContextType | null>(null);
@@ -62,6 +64,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     timeLimit: number 
   } | null>(null);
   const [currentVoteStats, setCurrentVoteStats] = useState<VoteStats | null>(null);
+  const [phaseProgress, setPhaseProgress] = useState<PhaseProgress | null>(null);
+  const [gameNotifications, setGameNotifications] = useState<GameNotification[]>([]);
+
 
   const handleRoomState = (state: { 
     state: RoomState; 
@@ -123,6 +128,60 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       isSystem: true,
       type: 'vote_results'
     }]);
+  };
+
+  const addGameNotification = (notification: Omit<GameNotification, 'id' | 'timestamp'>) => {
+    const newNotification: GameNotification = {
+      ...notification,
+      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+      timestamp: new Date().toISOString()
+    };
+    
+    setGameNotifications(prev => [...prev, newNotification]);
+    
+    // 如果有自动消失时间，设置定时器
+    if (notification.duration) {
+      setTimeout(() => {
+        removeGameNotification(newNotification.id);
+      }, notification.duration);
+    }
+  };
+
+  // 移除游戏通知
+  const removeGameNotification = (id: string) => {
+    setGameNotifications(prev => prev.filter(notif => notif.id !== id));
+  };
+
+  // 处理系统消息并转换为游戏通知
+  const handleReceiveMessage = (msg: Message) => {
+    setMessages(prev => [...prev, msg]);
+    
+    // 如果是系统消息，添加到游戏通知
+    if (msg.isSystem && roomState === 'playing') {
+      let notificationType: GameNotification['type'] = 'info';
+      let title = '系统消息';
+      
+      if (msg.message.includes('被击杀') || msg.message.includes('被毒杀')) {
+        notificationType = 'death';
+        title = '死亡消息';
+      } else if (msg.message.includes('被投票淘汰')) {
+        notificationType = 'elimination';
+        title = '淘汰消息';
+      } else if (msg.message.includes('开始') || msg.message.includes('阶段')) {
+        notificationType = 'phase';
+        title = '阶段变化';
+      } else if (msg.message.includes('胜利') || msg.message.includes('结束')) {
+        notificationType = 'success';
+        title = '游戏结束';
+      }
+      
+      addGameNotification({
+        type: notificationType,
+        title: title,
+        message: msg.message,
+        duration: notificationType === 'info' ? 5000 : 8000
+      });
+    }
   };
 
   const handleVoteUpdate = (data: any) => {
@@ -228,7 +287,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     newSocket.on('username_error', errorHandler);
     newSocket.on('rate_limit', errorHandler);
     newSocket.on('user_not_found', errorHandler);
-
+    newSocket.on('receive_msg', handleReceiveMessage);
+    
     if (!newSocket.connected) newSocket.connect();
 
     return () => {
@@ -413,6 +473,11 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     witchAction,
     hunterShoot,
     skipAction,
+    phaseProgress,
+    gameNotifications,
+    addGameNotification,
+    removeGameNotification,
+    setPhaseProgress,
   };
 
   return <RoomContext.Provider value={value}>{children}</RoomContext.Provider>;

@@ -12,13 +12,6 @@ interface PlayerStatusProps {
 const PlayerStatus: React.FC<PlayerStatusProps> = ({ users, gameState }) => {
   const getRoleEmoji = (user: User) => {
     if (!user.hasRole) return '❓';
-    
-    // 只有在游戏结束时才显示真实角色，否则显示通用图标
-    if (gameState.isActive) {
-      return user.isAlive ? '😊' : '💀';
-    }
-    
-    // 游戏结束后可以显示角色（如果服务端提供）
     return user.isAlive ? '😊' : '💀';
   };
 
@@ -36,22 +29,22 @@ const PlayerStatus: React.FC<PlayerStatusProps> = ({ users, gameState }) => {
   const sortedUsers = [...users].sort((a, b) => (a.pos || 0) - (b.pos || 0));
 
   return (
-    <div className="bg-white bg-opacity-90 p-4 rounded-lg shadow-md">
-      <h3 className="text-lg font-semibold mb-4">玩家状态</h3>
+    <div className="relative">
+      <h3 className="text-white text-lg font-semibold mb-6 text-center">玩家状态</h3>
       
       {/* 圆桌布局 */}
-      <div className="relative w-80 h-80 mx-auto mb-4">
+      <div className="relative w-96 h-96 mx-auto">
         {sortedUsers.map((user, index) => {
           const angle = (index * 360) / sortedUsers.length;
           const radian = (angle * Math.PI) / 180;
-          const radius = 120;
+          const radius = 150;
           const x = radius * Math.cos(radian - Math.PI / 2);
           const y = radius * Math.sin(radian - Math.PI / 2);
           
           return (
             <div
               key={user.userId}
-              className={`absolute w-16 h-16 transform -translate-x-1/2 -translate-y-1/2 ${
+              className={`absolute w-20 h-20 transform -translate-x-1/2 -translate-y-1/2 ${
                 !user.isAlive ? 'opacity-50 grayscale' : ''
               }`}
               style={{
@@ -61,68 +54,55 @@ const PlayerStatus: React.FC<PlayerStatusProps> = ({ users, gameState }) => {
               }}
             >
               {/* 位置号码 */}
-              <div className="absolute -top-2 -left-2 bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">
+              <div className="absolute -top-3 -left-3 bg-blue-500 text-white rounded-full w-7 h-7 flex items-center justify-center text-xs font-bold border-2 border-white">
                 {user.pos}
               </div>
               
               {/* 头像 */}
-              <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-gray-300">
+              <div className={`w-20 h-20 rounded-full overflow-hidden border-4 ${
+                user.isAlive ? 'border-green-400' : 'border-red-400'
+              } ${!user.isAlive ? 'bg-gray-800' : 'bg-white'}`}>
                 {user.userAvatar ? (
                   <Image
                     src={user.userAvatar}
                     alt={user.username}
-                    width={64}
-                    height={64}
+                    width={80}
+                    height={80}
                     className="object-cover"
                   />
                 ) : (
-                  <div className="w-full h-full bg-gray-200 flex items-center justify-center text-2xl">
+                  <div className={`w-full h-full flex items-center justify-center text-3xl ${
+                    user.isAlive ? 'bg-blue-100' : 'bg-gray-700'
+                  }`}>
                     {getRoleEmoji(user)}
                   </div>
                 )}
               </div>
               
               {/* 状态标识 */}
-              <div className="absolute -bottom-2 -right-2 text-xs">
+              <div className="absolute -bottom-2 -right-2 text-sm bg-white rounded-full px-1 border">
                 {getStatusEmoji(user)}
               </div>
               
               {/* 用户名 */}
-              <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-1 text-xs text-center whitespace-nowrap">
-                {user.username}
+              <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 text-xs text-center whitespace-nowrap">
+                <div className={`px-2 py-1 rounded ${
+                  user.isAlive ? 'bg-white bg-opacity-20 text-white' : 'bg-red-500 bg-opacity-20 text-red-200'
+                }`}>
+                  {user.username}
+                </div>
               </div>
             </div>
           );
         })}
         
         {/* 中心圆桌 */}
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-24 h-24 bg-amber-100 rounded-full border-4 border-amber-300 flex items-center justify-center">
-          <span className="text-2xl">🎯</span>
-        </div>
-      </div>
-      
-      {/* 玩家列表 */}
-      <div className="space-y-2 max-h-40 overflow-y-auto">
-        {sortedUsers.map(user => (
-          <div
-            key={user.userId}
-            className={`flex items-center justify-between p-2 rounded ${
-              !user.isAlive ? 'bg-gray-100 opacity-75' : 'bg-gray-50'
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              <span className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs">
-                {user.pos}
-              </span>
-              <span className={`${!user.isAlive ? 'line-through text-gray-500' : ''}`}>
-                {user.username}
-              </span>
-            </div>
-            <div className="text-sm">
-              {getStatusEmoji(user)}
-            </div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-amber-900 bg-opacity-50 rounded-full border-4 border-amber-600 flex items-center justify-center backdrop-blur-sm">
+          <div className="text-center">
+            <span className="text-4xl">🎯</span>
+            <div className="text-white text-xs mt-1">狼人杀</div>
           </div>
-        ))}
+        </div>
       </div>
     </div>
   );

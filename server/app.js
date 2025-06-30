@@ -21,7 +21,7 @@ nextApp.prepare().then(() => {
     });
 
     const eventBroadcaster = new EventBroadcaster(io);
-
+    
     io.use(authMiddleware(io));
 
     io.on('connection', (socket) => {

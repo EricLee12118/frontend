@@ -7,6 +7,8 @@ class GameService {
         this.io = io;
         this.eventBroadcaster = eventBroadcaster;
         this.globalState = GlobalState.getInstance();
+        // 存储定时器引用
+        this.phaseTimers = new Map();
     }
 
     getUserRoleInfo(userId, roomId) {
@@ -28,7 +30,58 @@ class GameService {
         };
     }
 
-    // 开始夜晚阶段
+    // 检查阶段是否完成，如果完成则自动进入下一阶段
+    checkAndProgressPhase(roomId) {
+        const room = this.globalState.getRoom(roomId);
+        if (!room || !room.game.isActive) return;
+
+        if (room.game.isPhaseCompleted()) {
+            logger.info(`房间 ${roomId} 阶段 ${room.game.currentPhase} 所有行动已完成，自动进入下一阶段`);
+            
+            // 清除定时器
+            this.clearPhaseTimer(roomId);
+            
+            // 进入下一阶段
+            switch (room.game.currentPhase) {
+                case 'night':
+                    this.finishNightPhase(roomId);
+                    break;
+                case 'vote':
+                    this.finishVotePhase(roomId);
+                    break;
+                case 'day':
+                    this.startVotePhase(roomId);
+                    break;
+            }
+        } else {
+            // 广播进度更新
+            const progress = room.game.getPhaseProgress();
+            this.io.to(roomId).emit('phase_progress', {
+                phase: room.game.currentPhase,
+                progress: progress,
+                timestamp: new Date().toISOString()
+            });
+        }
+    }
+
+    // 清除阶段定时器
+    clearPhaseTimer(roomId) {
+        if (this.phaseTimers.has(roomId)) {
+            clearTimeout(this.phaseTimers.get(roomId));
+            this.phaseTimers.delete(roomId);
+        }
+    }
+
+    // 设置阶段定时器
+    setPhaseTimer(roomId, callback, delay) {
+        this.clearPhaseTimer(roomId);
+        const timer = setTimeout(() => {
+            this.phaseTimers.delete(roomId);
+            callback();
+        }, delay);
+        this.phaseTimers.set(roomId, timer);
+    }
+
     startNightPhase(roomId) {
         const room = this.globalState.getRoom(roomId);
         if (!room || !room.game.isActive) {
@@ -42,7 +95,8 @@ class GameService {
 
         this.sendNightActionInstructions(roomId);
 
-        setTimeout(() => {
+        // 设置超时自动结束
+        this.setPhaseTimer(roomId, () => {
             this.finishNightPhase(roomId);
         }, 120000);
 
@@ -73,8 +127,8 @@ class GameService {
         });
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     sendWerewolfAction(socket, roomId, player) {
+        player.nightActionCompleted = false;
         const room = this.globalState.getRoom(roomId);
         const targets = room.game.getAlivePlayers()
             .filter(p => room.game.roleAssignments[p.userId] !== 'werewolf')
@@ -134,13 +188,14 @@ class GameService {
             return { success: false, message: '当前不是夜晚阶段' };
         }
 
+        // 清除定时器
+        this.clearPhaseTimer(roomId);
+
         const nightResults = this.executeNightActions(roomId);
         
         const gameEndCheck = room.game.checkGameEnd();
         if (gameEndCheck.ended) {
-            room.game.end(gameEndCheck.winner);
-            this.eventBroadcaster.broadcastSystemMessage(roomId, gameEndCheck.message);
-            this.eventBroadcaster.broadcastGameState(roomId);
+            this.endGame(roomId, gameEndCheck.winner, gameEndCheck.message);
             return { success: true, gameEnded: true, winner: gameEndCheck.winner };
         }
 
@@ -179,7 +234,8 @@ class GameService {
         this.eventBroadcaster.broadcastSystemMessage(roomId, 
             `第 ${room.game.dayCount} 天白天开始，请开始讨论。`);
 
-        setTimeout(() => {
+        // 30秒讨论时间后进入投票阶段
+        this.setPhaseTimer(roomId, () => {
             this.startVotePhase(roomId);
         }, 30000);
 
@@ -215,7 +271,6 @@ class GameService {
         });
     }
 
-    // 广播投票结果
     broadcastVoteResults(roomId, voteStats) {
         const room = this.globalState.getRoom(roomId);
         if (!room) return;
@@ -314,7 +369,8 @@ class GameService {
             timestamp: new Date().toISOString()
         });
 
-        setTimeout(() => {
+        // 60秒后自动结束投票
+        this.setPhaseTimer(roomId, () => {
             this.finishVotePhase(roomId);
         }, 60000);
 
@@ -326,6 +382,9 @@ class GameService {
         if (!room || room.game.currentPhase !== 'vote') {
             return { success: false, message: '当前不是投票阶段' };
         }
+
+        // 清除定时器
+        this.clearPhaseTimer(roomId);
 
         const voteResult = room.game.dayVote();
         
@@ -367,17 +426,54 @@ class GameService {
 
         const gameEndCheck = room.game.checkGameEnd();
         if (gameEndCheck.ended) {
-            room.game.end(gameEndCheck.winner);
-            this.eventBroadcaster.broadcastSystemMessage(roomId, gameEndCheck.message);
-            this.eventBroadcaster.broadcastGameState(roomId);
+            this.endGame(roomId, gameEndCheck.winner, gameEndCheck.message);
             return { success: true, gameEnded: true, winner: gameEndCheck.winner };
         }
 
-        setTimeout(() => {
+        // 5秒后进入下一个夜晚
+        this.setPhaseTimer(roomId, () => {
             this.startNightPhase(roomId);
         }, 5000);
         
         return { success: true };
+    }
+
+    // 统一的游戏结束处理
+    endGame(roomId, winner, message) {
+        const room = this.globalState.getRoom(roomId);
+        if (!room) return;
+
+        // 清除定时器
+        this.clearPhaseTimer(roomId);
+        
+        // 结束游戏
+        room.game.end(winner);
+        
+        // 重置房间状态为等待状态
+        room.state = 'waiting';
+        
+        // 重置用户状态
+        room.users.forEach(user => {
+            user.clearRole();
+            user.setVoted(false);
+            user.setNightActionCompleted(false);
+            user.isReady = false; // 重置准备状态
+        });
+
+        this.eventBroadcaster.broadcastSystemMessage(roomId, message);
+        this.eventBroadcaster.broadcastSystemMessage(roomId, '游戏结束！房间已重置，可以开始新游戏。');
+        this.eventBroadcaster.broadcastGameState(roomId);
+        this.eventBroadcaster.broadcastRoomState(roomId);
+        this.eventBroadcaster.broadcastRoomUsers(roomId);
+        
+        // 广播游戏结束事件
+        this.io.to(roomId).emit('game_ended', {
+            winner: winner,
+            message: message,
+            timestamp: new Date().toISOString()
+        });
+        
+        logger.info(`房间 ${roomId} 游戏结束，胜者: ${winner}`);
     }
 
     triggerHunterSkill(roomId, hunterId) {
@@ -400,9 +496,7 @@ class GameService {
             
             const gameEndCheck = room.game.checkGameEnd();
             if (gameEndCheck.ended) {
-                room.game.end(gameEndCheck.winner);
-                this.eventBroadcaster.broadcastSystemMessage(roomId, gameEndCheck.message);
-                this.eventBroadcaster.broadcastGameState(roomId);
+                this.endGame(roomId, gameEndCheck.winner, gameEndCheck.message);
             } else {
                 this.startNightPhase(roomId);
             }
@@ -422,7 +516,7 @@ class GameService {
                     timeLimit: 30000
                 });
 
-                setTimeout(() => {
+                this.setPhaseTimer(roomId, () => {
                     if (room.game.nightActions.hunterShot === null) {
                         if (alivePlayers.length > 0) {
                             const randomTarget = alivePlayers[Math.floor(Math.random() * alivePlayers.length)];
@@ -486,6 +580,9 @@ class GameService {
 
         this.eventBroadcaster.broadcastRoomUsers(roomId);
 
+        // 检查是否所有人都已投票，如果是则自动进入下一阶段
+        this.checkAndProgressPhase(roomId);
+
         logger.info(`${voter.username} 在投票中投票给 ${target.username} (总投票数: ${totalVotes})`);
         
         return { success: true, message: '投票成功', totalVotes: totalVotes };
@@ -529,6 +626,9 @@ class GameService {
         room.game.recordWerewolfVote(voterId, targetId);
         voter.setNightActionCompleted(true);
 
+        // 检查夜间阶段是否完成
+        this.checkAndProgressPhase(roomId);
+
         logger.info(`狼人 ${voter.username} 投票击杀 ${target.username}`);
         
         return { success: true, message: '击杀投票成功' };
@@ -571,6 +671,9 @@ class GameService {
         const result = room.game.seerCheck(targetId);
         seer.setNightActionCompleted(true);
 
+        // 标记预言家行动完成
+        room.game.markPlayerActionCompleted(seerId, 'night');
+
         const socket = this.io.sockets.sockets.get(this.globalState.activeUsers.get(seerId));
         if (socket) {
             socket.emit('seer_result', {
@@ -580,6 +683,9 @@ class GameService {
                 isWerewolf: result.isWerewolf
             });
         }
+
+        // 检查夜间阶段是否完成
+        this.checkAndProgressPhase(roomId);
 
         logger.info(`预言家 ${seer.username} 查验了 ${target.username}: ${result.result}`);
         
@@ -623,7 +729,6 @@ class GameService {
             witch.setNightActionCompleted(true);
             
             logger.info(`女巫 ${witch.username} 使用解药救人`);
-            return { success: true, message: '解药使用成功' };
             
         } else if (action === 'poison') {
             if (!room.game.witchItems.hasPoison) {
@@ -643,10 +748,15 @@ class GameService {
             witch.setNightActionCompleted(true);
             
             logger.info(`女巫 ${witch.username} 使用毒药毒杀 ${target.username}`);
-            return { success: true, message: '毒药使用成功' };
         }
 
-        return { success: false, message: '无效的女巫行动' };
+        // 标记女巫行动完成
+        room.game.markPlayerActionCompleted(witchId, 'night');
+
+        // 检查夜间阶段是否完成
+        this.checkAndProgressPhase(roomId);
+        
+        return { success: true, message: `${action === 'save' ? '解药' : '毒药'}使用成功` };
     }
 
     hunterShoot(roomId, hunterId, targetId) {
@@ -681,11 +791,12 @@ class GameService {
             `猎人 ${hunter.username} 带走了 ${target.username}！`);
         this.eventBroadcaster.broadcastRoomUsers(roomId);
 
+        // 清除猎人技能定时器
+        this.clearPhaseTimer(roomId);
+
         const gameEndCheck = room.game.checkGameEnd();
         if (gameEndCheck.ended) {
-            room.game.end(gameEndCheck.winner);
-            this.eventBroadcaster.broadcastSystemMessage(roomId, gameEndCheck.message);
-            this.eventBroadcaster.broadcastGameState(roomId);
+            this.endGame(roomId, gameEndCheck.winner, gameEndCheck.message);
         } else {
             this.startNightPhase(roomId);
         }
@@ -707,6 +818,17 @@ class GameService {
         }
 
         user.setNightActionCompleted(true);
+        
+        // 标记行动完成
+        if (actionType === 'night' || ['werewolf_kill', 'seer_check', 'witch_action'].includes(actionType)) {
+            room.game.markPlayerActionCompleted(userId, 'night');
+            // 检查夜间阶段是否完成
+            this.checkAndProgressPhase(roomId);
+        } else if (actionType === 'vote') {
+            room.game.markPlayerActionCompleted(userId, 'vote');
+            // 检查投票阶段是否完成
+            this.checkAndProgressPhase(roomId);
+        }
         
         logger.info(`${user.username} 跳过了 ${actionType} 行动`);
         
@@ -754,6 +876,9 @@ class GameService {
         if (room.creatorId !== userId) {
             return { success: false, message: '只有房主可以重新开始游戏' };
         }
+
+        // 清除定时器
+        this.clearPhaseTimer(roomId);
 
         room.game.reset();
         

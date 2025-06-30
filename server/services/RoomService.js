@@ -245,29 +245,39 @@ class RoomService {
     endGame(socket, data) {
         const { roomId } = data;
         const room = this.globalState.getRoom(roomId);
-        
+
         if (!room) {
             return { success: false, message: '房间不存在' };
         }
-        
-        // 检查房主权限
+
         if (room.creatorId !== socket.userId) {
             return { success: false, message: '只有房主可以结束游戏' };
         }
-        
-        // 检查游戏是否在进行中
+
         if (room.state !== 'playing') {
             return { success: false, message: '游戏未在进行中' };
         }
-        
+
         room.endGame();
-        logger.info(`房间 "${roomId}" 的游戏已结束`);
         
-        // 广播游戏结束
-        this.eventBroadcaster.broadcastSystemMessage(roomId, '游戏结束！');
+        // 重置房间状态为等待状态
+        room.state = 'waiting';
+        
+        // 重置用户状态
+        room.users.forEach(user => {
+            user.clearRole();
+            user.setVoted(false);
+            user.setNightActionCompleted(false);
+            user.isReady = false; // 重置准备状态
+        });
+        
+        logger.info(`房间 "${roomId}" 的游戏已手动结束`);
+
+        this.eventBroadcaster.broadcastSystemMessage(roomId, '游戏已结束！房间已重置，可以开始新游戏。');
         this.eventBroadcaster.broadcastRoomState(roomId);
         this.eventBroadcaster.broadcastRoomUsers(roomId);
-        
+        this.eventBroadcaster.broadcastGameState(roomId);
+
         return { success: true };
     }
 

@@ -8,11 +8,11 @@ class Game {
         this.startTime = null;
         this.endTime = null;
         this.round = 0;
-        this.currentPhase = null; // 'night', 'day', 'vote', 'discussion'
+        this.currentPhase = null;
         this.roleAssignments = {};
         this.positionAssignments = {};
         this.votes = {};
-        this.voteDetails = {}; // 详细投票记录
+        this.voteDetails = {};
         this.settings = {
             werewolves: 2,
             villagers: 3,
@@ -21,12 +21,10 @@ class Game {
             hunter: 1
         };
         
-        // 游戏状态
         this.dayCount = 1;
         this.phaseStartTime = null;
-        this.phaseTimeLimit = 60000; // 60秒
+        this.phaseTimeLimit = 60000;
         
-        // 夜间行动记录
         this.nightActions = {
             werewolfVotes: {},
             witchActions: { save: null, poison: null },
@@ -34,15 +32,21 @@ class Game {
             hunterShot: null
         };
         
-        // 女巫道具状态
         this.witchItems = {
             hasAntidote: true,
             hasPoison: true
         };
         
-        // 死亡记录
         this.deathRecord = [];
         this.lastNightDeath = null;
+        
+        // 新增：阶段完成跟踪
+        this.phaseCompletions = {
+            nightActionsCompleted: new Set(),
+            votesCompleted: new Set(),
+            requiredNightRoles: new Set(),
+            requiredVoters: new Set()
+        };
     }
 
     start() {
@@ -50,10 +54,11 @@ class Game {
         this.startTime = new Date().toISOString();
         this.round = 1;
         this.dayCount = 1;
-        this.currentPhase = 'night'; // 直接从夜晚开始
+        this.currentPhase = 'night';
         this.resetVotes();
         this.assignRoles();
         this.resetNightActions();
+        this.resetPhaseCompletions();
         return this;
     }
 
@@ -61,6 +66,7 @@ class Game {
         this.isActive = false;
         this.endTime = new Date().toISOString();
         this.winner = winner;
+        this.resetPhaseCompletions();
         return this;
     }
 
@@ -86,7 +92,109 @@ class Game {
         };
         this.deathRecord = [];
         this.lastNightDeath = null;
+        this.resetPhaseCompletions();
         return this;
+    }
+
+    // 重置阶段完成状态
+    resetPhaseCompletions() {
+        this.phaseCompletions = {
+            nightActionsCompleted: new Set(),
+            votesCompleted: new Set(),
+            requiredNightRoles: new Set(),
+            requiredVoters: new Set()
+        };
+    }
+
+    // 设置当前阶段需要行动的角色/玩家
+    setRequiredActors(phase) {
+        this.resetPhaseCompletions();
+        
+        if (phase === 'night') {
+            const alivePlayers = this.getAlivePlayers();
+            alivePlayers.forEach(player => {
+                const role = this.roleAssignments[player.userId];
+                if (['werewolf', 'seer', 'witch'].includes(role)) {
+                    this.phaseCompletions.requiredNightRoles.add(player.userId);
+                }
+            });
+        } else if (phase === 'vote') {
+            const alivePlayers = this.getAlivePlayers();
+            alivePlayers.forEach(player => {
+                this.phaseCompletions.requiredVoters.add(player.userId);
+            });
+        }
+    }
+
+    // 记录玩家完成行动
+    markPlayerActionCompleted(userId, actionType) {
+        if (actionType === 'night') {
+            this.phaseCompletions.nightActionsCompleted.add(userId);
+        } else if (actionType === 'vote') {
+            this.phaseCompletions.votesCompleted.add(userId);
+        }
+        
+        logger.debug(`玩家 ${userId} 完成 ${actionType} 行动`);
+    }
+
+    // 检查当前阶段是否所有必需行动都已完成
+    isPhaseCompleted() {
+        if (this.currentPhase === 'night') {
+            // 检查所有需要夜间行动的角色是否都已完成
+            for (const userId of this.phaseCompletions.requiredNightRoles) {
+                const player = this.room.getUser(userId);
+                if (!player || !player.isAlive) continue;
+                
+                const role = this.roleAssignments[userId];
+                
+                // 狼人必须投票（除非只有一个狼人且已死）
+                if (role === 'werewolf') {
+                    const aliveWolves = this.getAlivePlayersByRole('werewolf');
+                    if (aliveWolves.length > 0 && !this.nightActions.werewolfVotes[userId]) {
+                        return false;
+                    }
+                }
+                
+                // 预言家可以选择跳过
+                if (role === 'seer') {
+                    if (!this.phaseCompletions.nightActionsCompleted.has(userId)) {
+                        return false;
+                    }
+                }
+                
+                // 女巫可以选择跳过
+                if (role === 'witch') {
+                    if (!this.phaseCompletions.nightActionsCompleted.has(userId)) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        } else if (this.currentPhase === 'vote') {
+            // 检查所有存活玩家是否都已投票
+            const alivePlayers = this.getAlivePlayers();
+            return alivePlayers.every(player => 
+                this.phaseCompletions.votesCompleted.has(player.userId) || 
+                this.voteDetails[player.userId]
+            );
+        }
+        
+        return false;
+    }
+
+    // 获取阶段完成进度
+    getPhaseProgress() {
+        if (this.currentPhase === 'night') {
+            const required = this.phaseCompletions.requiredNightRoles.size;
+            const completed = this.phaseCompletions.nightActionsCompleted.size;
+            return { completed, required, type: 'night' };
+        } else if (this.currentPhase === 'vote') {
+            const required = this.getAlivePlayers().length;
+            const completed = Object.keys(this.voteDetails || {}).length;
+            return { completed, required, type: 'vote' };
+        }
+        
+        return { completed: 0, required: 0, type: 'unknown' };
     }
 
     assignRoles() {
@@ -175,6 +283,9 @@ class Game {
             this.resetNightActions();
         }
         
+        // 设置当前阶段需要的行动者
+        this.setRequiredActors(newPhase);
+        
         logger.info(`游戏阶段切换到: ${newPhase}`);
         return this;
     }
@@ -188,7 +299,6 @@ class Game {
         };
     }
 
-    // 重置投票
     resetVotes() {
         this.votes = {};
         this.voteDetails = {};
@@ -197,7 +307,6 @@ class Game {
         });
     }
 
-    // 记录投票
     recordVote(voterId, targetId) {
         if (!this.votes) this.votes = {};
         if (!this.voteDetails) this.voteDetails = {};
@@ -222,6 +331,9 @@ class Game {
             timestamp: new Date().toISOString()
         };
         
+        // 标记投票完成
+        this.markPlayerActionCompleted(voterId, 'vote');
+        
         logger.debug(`${voterId} 投票给 ${targetId}`);
         return this.getTotalVoteCount();
     }
@@ -230,7 +342,6 @@ class Game {
         return Object.keys(this.voteDetails || {}).length;
     }
 
-    // 获取投票统计结果
     getVoteResults() {
         const results = {};
         const voterDetails = {};
@@ -267,7 +378,6 @@ class Game {
         };
     }
 
-    // 白天投票
     dayVote() {
         // const alivePlayers = this.getAlivePlayers();
         const voteStats = this.getVoteResults();
@@ -283,9 +393,7 @@ class Game {
 
         const maxVotes = Math.max(...Object.values(this.votes || {}).map(voters => voters.length));
         const candidates = Object.entries(this.votes || {})
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             .filter(([_, voters]) => voters.length === maxVotes)
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             .map(([targetId, _]) => this.room.getUser(targetId))
             .filter(user => user);
 
@@ -432,6 +540,7 @@ class Game {
 
     recordWerewolfVote(voterId, targetId) {
         this.nightActions.werewolfVotes[voterId] = targetId;
+        this.markPlayerActionCompleted(voterId, 'night');
         logger.debug(`狼人 ${voterId} 选择击杀 ${targetId}`);
         return Object.keys(this.nightActions.werewolfVotes).length;
     }
@@ -467,7 +576,8 @@ class Game {
             phaseStartTime: this.phaseStartTime,
             witchItems: this.witchItems,
             deathRecord: this.deathRecord,
-            lastNightDeath: this.lastNightDeath
+            lastNightDeath: this.lastNightDeath,
+            phaseProgress: this.getPhaseProgress()
         };
     }
 
@@ -500,6 +610,29 @@ class Game {
             witches: roles.filter(r => r === 'witch').length,
             hunters: roles.filter(r => r === 'hunter').length
         };
+    }
+
+    getPhaseProgress() {
+        if (this.currentPhase === 'night') {
+            const required = this.phaseCompletions.requiredNightRoles.size;
+            const completed = this.phaseCompletions.nightActionsCompleted.size;
+            return { completed, required, type: 'night' };
+        } else if (this.currentPhase === 'day') {
+            // 白天阶段：等待夜晚结果广播和讨论时间
+            return { completed: 1, required: 1, type: 'day' };
+        } else if (this.currentPhase === 'vote') {
+            const required = this.getAlivePlayers().length;
+            const completed = Object.keys(this.voteDetails || {}).length;
+            return { completed, required, type: 'vote' };
+        }
+        
+        return { completed: 0, required: 0, type: 'unknown' };
+    }
+
+    // 添加方法检查白天阶段是否完成
+    isDayPhaseCompleted() {
+        // 白天阶段主要是广播夜晚结果，可以设置最短时间后自动完成
+        return this.currentPhase === 'day';
     }
 }
 

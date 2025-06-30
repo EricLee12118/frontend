@@ -4,6 +4,21 @@ import { Socket } from 'socket.io-client';
 export type RoomState = 'waiting' | 'ready' | 'playing' | 'ended';
 export type GamePhase = 'night' | 'day' | 'vote' | 'discussion';
 
+export interface PhaseProgress {
+  completed: number;
+  required: number;
+  type: 'night' | 'day' | 'vote' | 'unknown';
+}
+
+export interface GameNotification {
+  id: string;
+  type: 'info' | 'warning' | 'success' | 'error' | 'death' | 'elimination' | 'phase';
+  title: string;
+  message: string;
+  timestamp: string;
+  duration?: number; // 自动消失时间，毫秒
+}
+
 export interface Message {
   sender: string;
   message: string;
@@ -57,6 +72,7 @@ export interface GameState {
     day: number;
   }>;
   lastNightDeath?: string | null;
+  phaseProgress?: PhaseProgress;
 }
 
 export interface RoleInfo {
@@ -127,6 +143,10 @@ export interface RoomContextType {
   voteRequired: { phase: string; targets: VoteTarget[]; message: string; timeLimit: number } | null;
   hunterSkillRequired: { targets: VoteTarget[]; message: string; timeLimit: number } | null;
   currentVoteStats: VoteStats | null;
+  phaseProgress: PhaseProgress | null;
+  gameNotifications: GameNotification[];
+  addGameNotification: (notification: Omit<GameNotification, 'id' | 'timestamp'>) => void;
+  removeGameNotification: (id: string) => void;
   
   // 游戏操作方法
   getRoleInfo: () => void;
