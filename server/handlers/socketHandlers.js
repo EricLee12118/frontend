@@ -1,3 +1,4 @@
+// handlers/socketHandlers.js
 import Validator from '../validators/Validator.js';
 import RoomService from '../services/RoomService.js';
 import GameService from '../services/GameService.js';
@@ -27,10 +28,14 @@ export default function initializeSocketHandlers(io, socket, eventBroadcaster) {
 
     function registerGameEvents() {
         socket.on('get_role', handleGetRole);
-        socket.on('next_round', handleNextRound);
-        socket.on('change_phase', handleChangePhase);
+        socket.on('force_next_phase', handleForceNextPhase);
+        socket.on('restart_game', handleRestartGame);
         socket.on('player_vote', handlePlayerVote);
+        socket.on('werewolf_vote', handleWerewolfVote);
         socket.on('seer_check', handleSeerCheck);
+        socket.on('witch_action', handleWitchAction);
+        socket.on('hunter_shoot', handleHunterShoot);
+        socket.on('skip_action', handleSkipAction);
     }
 
     function registerDisconnectEvent() {
@@ -82,6 +87,9 @@ export default function initializeSocketHandlers(io, socket, eventBroadcaster) {
             socket.emit('validation_error', result.message);
         } else {
             gameService.printRoleAssignments(data.roomId);
+            setTimeout(() => {
+                gameService.startNightPhase(data.roomId);
+            }, 3000);
         }
     }
 
@@ -98,11 +106,11 @@ export default function initializeSocketHandlers(io, socket, eventBroadcaster) {
             socket.emit('validation_error', result.message);
         }
     }
-    
+
     function handleGetRole(data) {
         const { roomId } = data;
         if (!roomId) return socket.emit('validation_error', '缺少房间ID');
-        
+
         const result = gameService.getUserRoleInfo(socket.userId, roomId);
         if (result.success) {
             socket.emit('role_info', {
@@ -115,31 +123,31 @@ export default function initializeSocketHandlers(io, socket, eventBroadcaster) {
             socket.emit('validation_error', result.message);
         }
     }
-    
-    function handleNextRound(data) {
+
+    function handleForceNextPhase(data) {
         const { roomId } = data;
         if (!roomId) return socket.emit('validation_error', '缺少房间ID');
-        
-        const result = gameService.nextRound(roomId, socket.userId);
+
+        const result = gameService.forceNextPhase(roomId, socket.userId);
         if (!result.success) {
             socket.emit('validation_error', result.message);
         }
     }
-    
-    function handleChangePhase(data) {
-        const { roomId, phase } = data;
-        if (!roomId || !phase) return socket.emit('validation_error', '缺少必要参数');
-        
-        const result = gameService.changePhase(roomId, socket.userId, phase);
+
+    function handleRestartGame(data) {
+        const { roomId } = data;
+        if (!roomId) return socket.emit('validation_error', '缺少房间ID');
+
+        const result = gameService.restartGame(roomId, socket.userId);
         if (!result.success) {
             socket.emit('validation_error', result.message);
         }
     }
-    
+
     function handlePlayerVote(data) {
         const { roomId, targetId } = data;
         if (!roomId || !targetId) return socket.emit('validation_error', '缺少必要参数');
-        
+
         const result = gameService.playerVote(roomId, socket.userId, targetId);
         if (!result.success) {
             socket.emit('validation_error', result.message);
@@ -147,24 +155,74 @@ export default function initializeSocketHandlers(io, socket, eventBroadcaster) {
             socket.emit('vote_success', { message: '投票成功' });
         }
     }
-    
+
+    function handleWerewolfVote(data) {
+        const { roomId, targetId } = data;
+        if (!roomId || !targetId) return socket.emit('validation_error', '缺少必要参数');
+
+        const result = gameService.werewolfVote(roomId, socket.userId, targetId);
+        if (!result.success) {
+            socket.emit('validation_error', result.message);
+        } else {
+            socket.emit('action_success', { message: '狼人投票成功' });
+        }
+    }
+
     function handleSeerCheck(data) {
         const { roomId, targetId } = data;
         if (!roomId || !targetId) return socket.emit('validation_error', '缺少必要参数');
-        
+
         const result = gameService.seerCheck(roomId, socket.userId, targetId);
         if (!result.success) {
             socket.emit('validation_error', result.message);
+        } else {
+            socket.emit('action_success', { message: '预言家查验成功' });
         }
     }
-    
+
+    function handleWitchAction(data) {
+        const { roomId, action, targetId } = data;
+        if (!roomId || !action) return socket.emit('validation_error', '缺少必要参数');
+
+        const result = gameService.witchAction(roomId, socket.userId, action, targetId);
+        if (!result.success) {
+            socket.emit('validation_error', result.message);
+        } else {
+            socket.emit('action_success', { message: '女巫行动成功' });
+        }
+    }
+
+    function handleHunterShoot(data) {
+        const { roomId, targetId } = data;
+        if (!roomId || !targetId) return socket.emit('validation_error', '缺少必要参数');
+
+        const result = gameService.hunterShoot(roomId, socket.userId, targetId);
+        if (!result.success) {
+            socket.emit('validation_error', result.message);
+        } else {
+            socket.emit('action_success', { message: '猎人技能使用成功' });
+        }
+    }
+
+    function handleSkipAction(data) {
+        const { roomId, actionType } = data;
+        if (!roomId || !actionType) return socket.emit('validation_error', '缺少必要参数');
+
+        const result = gameService.skipAction(roomId, socket.userId, actionType);
+        if (!result.success) {
+            socket.emit('validation_error', result.message);
+        } else {
+            socket.emit('action_success', { message: '已跳过行动' });
+        }
+    }
+
     function handleDisconnect() {
         logger.info(`用户断开连接: ${socket.username}(${socket.userId})`);
-        
+
         if (socket.roomId) {
             roomService.leaveRoom(socket, socket.roomId);
         }
-        
+
         eventBroadcaster.broadcastRoomsList();
     }
 }

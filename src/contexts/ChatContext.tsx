@@ -9,7 +9,9 @@ import {
   User, 
   RoomState, 
   GameState,
-  RoleInfo 
+  RoleInfo,
+  NightActionData,
+  VoteStats
 } from '@/types/chat'; 
 
 const RoomContext = createContext<RoomContextType | null>(null);
@@ -47,6 +49,19 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const [roleInfo, setRoleInfo] = useState<RoleInfo | null>(null);
   const [gameMessages, setGameMessages] = useState<Message[]>([]);
   const [seerResult, setSeerResult] = useState<any>(null);
+  const [nightActionRequired, setNightActionRequired] = useState<NightActionData | null>(null);
+  const [voteRequired, setVoteRequired] = useState<{ 
+    phase: string; 
+    targets: any[]; 
+    message: string; 
+    timeLimit: number 
+  } | null>(null);
+  const [hunterSkillRequired, setHunterSkillRequired] = useState<{ 
+    targets: any[]; 
+    message: string; 
+    timeLimit: number 
+  } | null>(null);
+  const [currentVoteStats, setCurrentVoteStats] = useState<VoteStats | null>(null);
 
   const handleRoomState = (state: { 
     state: RoomState; 
@@ -67,10 +82,72 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
   const handleSeerResult = (result: any) => {
     setSeerResult(result);
+    // 5秒后清除结果
+    setTimeout(() => setSeerResult(null), 5000);
   };
 
   const handleGameMessage = (msg: Message) => {
     setGameMessages(prev => [...prev, msg]);
+  };
+
+  const handleNightActionRequired = (data: NightActionData) => {
+    setNightActionRequired(data);
+  };
+
+  const handleVoteRequired = (data: { phase: string; targets: any[]; message: string; timeLimit: number }) => {
+    setVoteRequired(data);
+  };
+
+  const handleHunterSkillRequired = (data: { targets: any[]; message: string; timeLimit: number }) => {
+    setHunterSkillRequired(data);
+  };
+
+  const handleActionSuccess = (data: { message: string }) => {
+    setNightActionRequired(null);
+    setVoteRequired(null);
+    setHunterSkillRequired(null);
+    
+    setMessages(prev => [...prev, {
+      sender: '系统',
+      message: data.message,
+      timestamp: new Date().toISOString(),
+      isSystem: true
+    }]);
+  };
+
+  const handleVoteResults = (data: any) => {
+    setMessages(prev => [...prev, {
+      sender: '系统',
+      message: data.message,
+      timestamp: data.timestamp,
+      isSystem: true,
+      type: 'vote_results'
+    }]);
+  };
+
+  const handleVoteUpdate = (data: any) => {
+    setCurrentVoteStats(data.voteStats);
+    setMessages(prev => [...prev, {
+      sender: '系统',
+      message: `${data.voter.username} 投票给 ${data.target.username}`,
+      timestamp: data.timestamp,
+      isSystem: true,
+      type: 'vote_update'
+    }]);
+  };
+
+  const handleVotePhaseStarted = (data: any) => {
+    setCurrentVoteStats(data.voteStats);
+  };
+
+  const handlePlayerEliminated = (data: any) => {
+    setMessages(prev => [...prev, {
+      sender: '系统',
+      message: `${data.eliminated.username} 被淘汰！角色：${data.eliminated.role}`,
+      timestamp: data.timestamp,
+      isSystem: true,
+      type: 'elimination'
+    }]);
   };
 
   roomIdRef.current = roomId;
@@ -133,6 +210,17 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     newSocket.on('seer_result', handleSeerResult);
     newSocket.on('game_message', handleGameMessage);
     newSocket.on('role_assigned', handleRoleInfo);
+    newSocket.on('night_action_required', handleNightActionRequired);
+    newSocket.on('vote_required', handleVoteRequired);
+    newSocket.on('hunter_skill_required', handleHunterSkillRequired);
+    newSocket.on('action_success', handleActionSuccess);
+    newSocket.on('vote_success', handleActionSuccess);
+    
+    // 投票相关事件
+    newSocket.on('vote_results', handleVoteResults);
+    newSocket.on('vote_update', handleVoteUpdate);
+    newSocket.on('vote_phase_started', handleVotePhaseStarted);
+    newSocket.on('player_eliminated', handlePlayerEliminated);
     
     const errorHandler = (error: string) => alert(error);
     newSocket.on('validation_error', errorHandler);
@@ -159,11 +247,20 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       newSocket.off('seer_result');
       newSocket.off('game_message');
       newSocket.off('role_assigned');
+      newSocket.off('night_action_required');
+      newSocket.off('vote_required');
+      newSocket.off('hunter_skill_required');
+      newSocket.off('action_success');
+      newSocket.off('vote_success');
+      newSocket.off('vote_results');
+      newSocket.off('vote_update');
+      newSocket.off('vote_phase_started');
+      newSocket.off('player_eliminated');
       
       setIsConnecting(false);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, isLoaded]);
+  }, [user, isLoaded, shouldAutoJoin]);
 
   useEffect(() => {
     if (socket && roomState === 'playing' && !roleInfo) {
@@ -195,6 +292,10 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       setRoleInfo(null);
       setGameMessages([]);
       setSeerResult(null);
+      setNightActionRequired(null);
+      setVoteRequired(null);
+      setHunterSkillRequired(null);
+      setCurrentVoteStats(null);
     }
   };
   
@@ -219,27 +320,59 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const nextRound = () => {
+  const forceNextPhase = () => {
     if (socket && roomId && isRoomOwner) {
-      socket.emit('next_round', { roomId });
+      socket.emit('force_next_phase', { roomId });
     }
   };
 
-  const changeGamePhase = (phase: string) => {
+  const restartGame = () => {
     if (socket && roomId && isRoomOwner) {
-      socket.emit('change_phase', { roomId, phase });
+      socket.emit('restart_game', { roomId });
     }
   };
 
-  const castVote = (targetId: string) => {
+  const playerVote = (targetId: string) => {
     if (socket && roomId) {
       socket.emit('player_vote', { roomId, targetId });
+      setVoteRequired(null);
     }
   };
 
-  const seerCheckPlayer = (targetId: string) => {
-    if (socket && roomId && roleInfo?.role === 'seer') {
+  const werewolfVote = (targetId: string) => {
+    if (socket && roomId) {
+      socket.emit('werewolf_vote', { roomId, targetId });
+      setNightActionRequired(null);
+    }
+  };
+
+  const seerCheck = (targetId: string) => {
+    if (socket && roomId) {
       socket.emit('seer_check', { roomId, targetId });
+      setNightActionRequired(null);
+    }
+  };
+
+  const witchAction = (action: 'save' | 'poison', targetId?: string) => {
+    if (socket && roomId) {
+      socket.emit('witch_action', { roomId, action, targetId });
+      setNightActionRequired(null);
+    }
+  };
+
+  const hunterShoot = (targetId: string) => {
+    if (socket && roomId) {
+      socket.emit('hunter_shoot', { roomId, targetId });
+      setHunterSkillRequired(null);
+    }
+  };
+
+  const skipAction = (actionType: string) => {
+    if (socket && roomId) {
+      socket.emit('skip_action', { roomId, actionType });
+      setNightActionRequired(null);
+      setVoteRequired(null);
+      setHunterSkillRequired(null);
     }
   };
 
@@ -263,15 +396,23 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     gameState,
     isRoomOwner,
     
-    // 新增的游戏相关属性和方法
+    // 游戏相关属性和方法
     roleInfo,
     gameMessages,
     seerResult,
+    nightActionRequired,
+    voteRequired,
+    hunterSkillRequired,
+    currentVoteStats,
     getRoleInfo,
-    nextRound,
-    changeGamePhase,
-    castVote,
-    seerCheckPlayer,
+    forceNextPhase,
+    restartGame,
+    playerVote,
+    werewolfVote,
+    seerCheck,
+    witchAction,
+    hunterShoot,
+    skipAction,
   };
 
   return <RoomContext.Provider value={value}>{children}</RoomContext.Provider>;
