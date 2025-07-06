@@ -1,18 +1,18 @@
 import User from './User.js';
 import Game from './Game.js';
 
-class Room {
+export default class Room {
     constructor(roomId, creatorUsername, creatorUserId) {
         this.roomId = roomId;
         this.creator = creatorUsername;
         this.creatorId = creatorUserId;
         this.createdAt = new Date().toISOString();
         this.users = new Map();
-        this.state = 'waiting'; // waiting, ready, playing, ended
+        this.state = 'waiting';
         this.game = new Game(this);
         this.channels = {
             main: { messages: [] },
-            game: { messages: [] }, 
+            game: { messages: [] },
             werewolf: { messages: [] }
         };
     }
@@ -23,13 +23,16 @@ class Room {
     }
 
     updateState() {
-        this.state = this.isAllReady() ? 'ready' : 'waiting';
+        if (this.game.state.isActive) {
+            this.state = 'playing';
+        } else {
+            this.state = this.isAllReady() ? 'ready' : 'waiting';
+        }
         return this.state;
     }
 
     addUser(userData) {
         const existingUser = this.users.get(userData.userId);
-        
         if (existingUser) {
             Object.assign(existingUser, userData);
         } else {
@@ -37,7 +40,6 @@ class Room {
             const user = new User({...userData, isRoomOwner});
             this.users.set(userData.userId, user);
         }
-        
         this.updateState();
         return this.getUsersArray();
     }
@@ -69,29 +71,18 @@ class Room {
         if (this.state !== 'ready') {
             throw new Error('游戏无法开始：不是所有玩家都准备好了');
         }
-        
         this.state = 'playing';
         this.game.start();
         return this;
     }
 
     endGame() {
-        this.state = 'ended';
-        this.game.end();
-        
-        this.users.forEach(user => {
-            if (!user.isAI) user.isReady = false;
-            user.clearRole();
-        });
-        
-        this.updateState();
-        return this;
-    }
-
-    resetRoom() {
         this.state = 'waiting';
-        this.game.reset();
-        this.users.forEach(user => user.clearRole());
+        this.game.end();
+        this.users.forEach(user => {
+            user.clearRole();
+            user.isReady = false;
+        });
         this.updateState();
         return this;
     }
@@ -99,7 +90,7 @@ class Room {
     addAIPlayers(aiPlayers) {
         const existingUserIds = new Set(Array.from(this.users.keys()));
         const newAiPlayers = [];
-        
+
         for (const aiData of aiPlayers) {
             if (!existingUserIds.has(aiData.userId)) {
                 const aiUser = new User({...aiData, isAI: true, isReady: true});
@@ -107,7 +98,6 @@ class Room {
                 newAiPlayers.push(aiUser);
             }
         }
-        
         this.updateState();
         return newAiPlayers.map(ai => ai.toJSON());
     }
@@ -116,20 +106,17 @@ class Room {
         if (!this.channels[channelName]) {
             this.channels[channelName] = { messages: [] };
         }
-        
         this.channels[channelName].messages.push(message);
-        
         if (this.channels[channelName].messages.length > 100) {
             this.channels[channelName].messages.shift();
         }
-        
         return this.channels[channelName].messages;
     }
-    
+
     getUserRoleInfo(userId) {
         return this.game.getUserRoleInfo(userId);
     }
-    
+
     transferOwnership(newOwnerId) {
         const newOwner = this.users.get(newOwnerId);
         if (newOwner) {
@@ -141,26 +128,4 @@ class Room {
         }
         return false;
     }
-
-    getStats() {
-        const userCount = this.users.size;
-        const aiCount = Array.from(this.users.values()).filter(u => u.isAI).length;
-        const humanCount = userCount - aiCount;
-        const readyCount = Array.from(this.users.values()).filter(u => u.isReady || u.isAI).length;
-        
-        return {
-            roomId: this.roomId,
-            userCount,
-            humanCount,
-            aiCount,
-            creator: this.creator,
-            creatorId: this.creatorId,
-            state: this.state,
-            createdAt: this.createdAt,
-            readyCount,
-            maxPlayers: 8
-        };
-    }
 }
-
-export default Room;

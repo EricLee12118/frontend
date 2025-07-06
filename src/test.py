@@ -26,7 +26,7 @@ def scan_directory(path, indent=""):
             result.extend(scan_directory(full_path, indent + "  "))
         else:
             # 檢查是否為代碼文件
-            code_extensions = ['.py', '.js', '.java', '.cpp', '.c', '.html', '.css', '.php', '.rb', '.go']
+            code_extensions = ['.py', '.js', '.java', '.cpp', '.c', '.html', '.css', '.php', '.rb', '.go', '.tsx', '.ts']
             if any(item.endswith(ext) for ext in code_extensions):
                 result.append(f"{indent}📄 {item}")
                 content = read_file_content(full_path)

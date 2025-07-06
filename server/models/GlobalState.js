@@ -1,4 +1,3 @@
-// models/GlobalState.js
 import Room from './Room.js';
 
 class GlobalState {
@@ -6,7 +5,7 @@ class GlobalState {
         if (GlobalState.instance) return GlobalState.instance;
         this.rooms = new Map();
         this.rateLimit = {};
-        this.activeUsers = new Map(); // userId -> socketId
+        this.activeUsers = new Map();
         GlobalState.instance = this;
     }
 
@@ -37,13 +36,10 @@ class GlobalState {
         this.rateLimit[socketId] = (this.rateLimit[socketId] || []).filter(
             timestamp => currentTime - timestamp < 1000
         );
-        
-        if (this.rateLimit[socketId].length >= 5) {
-            return false; // 频率受限
-        }
-        
+
+        if (this.rateLimit[socketId].length >= 5) return false;
         this.rateLimit[socketId].push(currentTime);
-        return true; // 频率正常
+        return true;
     }
 }
 

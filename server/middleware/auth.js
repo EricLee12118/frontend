@@ -21,7 +21,7 @@ export default function authMiddleware(io) {
         socket.username = username;
         socket.userAvatar = userAvatar || '';
         socket.isAI = isAI || false;
-        socket.isReady = false; 
+        socket.isReady = false;
         logger.info(`用户 ${username}(${userId}) 已认证`);
         next();
     };
