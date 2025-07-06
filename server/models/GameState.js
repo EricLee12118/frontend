@@ -149,7 +149,6 @@ export default class GameState {
 
     isPhaseCompleted() {
         if (this.currentPhase === 'night') {
-            // 检查所有需要夜间行动的角色是否都已完成
             for (const userId of this.phaseCompletions.requiredNightRoles) {
                 if (!this.phaseCompletions.nightActionsCompleted.has(userId)) {
                     return false;
@@ -157,9 +156,8 @@ export default class GameState {
             }
             return true;
         } else if (this.currentPhase === 'day') {
-            return true; // 白天阶段用于广播结果，可以立即完成
+            return true; 
         } else if (this.currentPhase === 'vote') {
-            // 检查所有存活玩家是否都已投票或跳过
             for (const userId of this.phaseCompletions.requiredVoters) {
                 if (!this.phaseCompletions.votesCompleted.has(userId) && !this.voteDetails[userId]) {
                     return false;

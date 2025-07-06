@@ -90,7 +90,6 @@ export default class PhaseManager {
         const room = this.globalState.getRoom(roomId);
         const state = room.game.state;
         
-        // 获取昨夜死亡信息（只在狼人行动后才有）
         const lastNightDeath = state.lastNightDeath;
         const deadPlayer = lastNightDeath ? room.getUser(lastNightDeath) : null;
         
@@ -98,7 +97,6 @@ export default class PhaseManager {
             .filter(p => p.userId !== player.userId)
             .map(p => ({ userId: p.userId, username: p.username, position: p.pos }));
 
-        // 第一夜女巫不能救自己的限制
         const canSaveSelf = !state.isFirstNight || (deadPlayer && deadPlayer.userId !== player.userId);
 
         socket.emit('night_action_required', {

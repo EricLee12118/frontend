@@ -7,7 +7,6 @@ export default class ActionProcessor {
         this.io = io;
         this.eventBroadcaster = eventBroadcaster;
         this.globalState = GlobalState.getInstance();
-        // 创建 PhaseManager 实例
         this.phaseManager = new PhaseManager(io, eventBroadcaster);
     }
 
@@ -29,7 +28,6 @@ export default class ActionProcessor {
         this.broadcastVoteUpdate(roomId, voter, target, room.game.actions.getVoteResults());
         this.eventBroadcaster.broadcastRoomUsers(roomId);
         
-        // 检查阶段进度
         this.checkAndProgressPhase(roomId);
 
         return { success: true, message: '投票成功', totalVotes };
@@ -44,7 +42,6 @@ export default class ActionProcessor {
         const { voter, error } = this.validateWerewolfAction(room, voterId, targetId);
         if (error) return { success: false, message: error };
 
-        // 获取目标玩家用于日志记录
         const target = room.getUser(targetId);
 
         room.game.state.nightActions.werewolfVotes[voterId] = targetId;

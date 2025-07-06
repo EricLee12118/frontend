@@ -4,6 +4,23 @@ import { Socket } from 'socket.io-client';
 export type RoomState = 'waiting' | 'ready' | 'playing' | 'ended';
 export type GamePhase = 'night' | 'day' | 'vote' | 'discussion';
 
+export interface Message {
+  sender: string;
+  message: string;
+  timestamp: string;
+  isSystem?: boolean;
+}
+
+export interface NotificaitonProps {
+  messages: Message[];
+  message: string;
+  setMessage: (message: string) => void;
+  sendMessage: (e: React.FormEvent) => void;
+  leaveRoom: () => void;
+  roomState: string;
+}
+
+
 export interface PhaseProgress {
   completed: number;
   required: number;

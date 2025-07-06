@@ -8,7 +8,6 @@ export default class GameActions {
     recordVote(voterId, targetId) {
         const state = this.game.state;
         
-        // 清除之前的投票
         Object.keys(state.votes).forEach(key => {
             if (state.votes[key] && Array.isArray(state.votes[key])) {
                 state.votes[key] = state.votes[key].filter(id => id !== voterId);
@@ -16,7 +15,6 @@ export default class GameActions {
             }
         });
 
-        // 记录新投票
         if (!state.votes[targetId]) state.votes[targetId] = [];
         state.votes[targetId].push(voterId);
         
@@ -93,10 +91,8 @@ export default class GameActions {
             const targetId = targets[0];
             const target = this.game.room.getUser(targetId);
             
-            // 设置lastNightDeath，供女巫使用
             state.lastNightDeath = targetId;
             
-            // 检查女巫是否救了这个人
             if (state.nightActions.witchActions.save === targetId) {
                 logger.info(`${target.username} 被狼人击杀，但被女巫救活`);
                 return { killed: target, saved: true };

@@ -1,22 +1,7 @@
 import React from 'react';
+import { NotificaitonProps } from '@/types/chat';
 
-interface Message {
-  sender: string;
-  message: string;
-  timestamp: string;
-  isSystem?: boolean;
-}
-
-interface ChatAreaProps {
-  messages: Message[];
-  message: string;
-  setMessage: (message: string) => void;
-  sendMessage: (e: React.FormEvent) => void;
-  leaveRoom: () => void;
-  roomState: string;
-}
-
-const ChatArea: React.FC<ChatAreaProps> = ({ 
+const ChatArea: React.FC<NotificaitonProps> = ({ 
   messages, 
   message, 
   setMessage, 

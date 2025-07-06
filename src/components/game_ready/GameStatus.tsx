@@ -17,7 +17,12 @@ const GameStatus: React.FC = () => {
     restartGame,
     phaseProgress,
     gameNotifications,
-    removeGameNotification
+    messages, 
+    message,
+    setMessage,
+    sendMessage,
+    leaveRoom,
+    roomState,
   } = useRoomContext();
 
   const [gameDuration, setGameDuration] = useState(0);
@@ -44,7 +49,7 @@ const GameStatus: React.FC = () => {
   const getRoleEmoji = (role: string) => {
     switch(role) {
       case 'werewolf': return '🐺';
-      case 'villager': return '👨‍🌾';
+      case 'villager': return'👨‍🌾';
       case 'seer': return '👁️';
       case 'witch': return '🧙‍♀️';
       case 'hunter': return '🏹';
@@ -231,8 +236,12 @@ const GameStatus: React.FC = () => {
                 )}
               </h3>
               <GameNotifications 
-                notifications={gameNotifications} 
-                onRemove={removeGameNotification}
+                messages={messages}
+                message={message} 
+                setMessage={setMessage} 
+                sendMessage={sendMessage} 
+                leaveRoom={leaveRoom}
+                roomState={roomState} 
               />
             </div>
 
