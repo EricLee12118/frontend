@@ -162,7 +162,6 @@ export interface RoomContextType {
   currentVoteStats: VoteStats | null;
   phaseProgress: PhaseProgress | null;
   gameNotifications: GameNotification[];
-  addGameNotification: (notification: Omit<GameNotification, 'id' | 'timestamp'>) => void;
   removeGameNotification: (id: string) => void;
   
   // 游戏操作方法

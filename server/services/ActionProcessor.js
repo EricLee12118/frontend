@@ -61,7 +61,7 @@ export default class ActionProcessor {
         }
 
         const { seer, target, error } = this.validateSeerAction(room, seerId, targetId);
-        console.log(seer, target);
+        logger.info(`预言家 ${seer.username} 检查 ${target.username}`);
         if (error) return { success: false, message: error };
 
         const result = room.game.actions.seerCheck(targetId);
@@ -109,7 +109,6 @@ export default class ActionProcessor {
 
         const gameEndCheck = room.game.checkGameEnd();
         if (gameEndCheck.ended) {
-            // 通过PhaseManager结束游戏
             this.phaseManager.endGame(roomId, gameEndCheck.winner, gameEndCheck.message);
         }
 
@@ -137,7 +136,6 @@ export default class ActionProcessor {
         return { success: true, message: '已跳过行动' };
     }
 
-    // 验证方法
     validateVotePhase(room) {
         return room?.game.state.isActive && room.game.state.currentPhase === 'vote';
     }
@@ -218,7 +216,6 @@ export default class ActionProcessor {
         return { hunter, target };
     }
 
-    // 辅助方法
     sendSeerResult(seerId, result) {
         const socket = this.io.sockets.sockets.get(this.globalState.activeUsers.get(seerId));
         if (socket) {

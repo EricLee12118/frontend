@@ -86,7 +86,6 @@ const GameStatus: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 p-6">
       <div className="max-w-7xl mx-auto">
-        {/* 顶部游戏信息栏 */}
         <div className="mb-6">
           <div className="bg-white bg-opacity-10 backdrop-blur-md rounded-xl p-4 border border-white border-opacity-20">
             <div className="flex items-center justify-between">
@@ -116,7 +115,6 @@ const GameStatus: React.FC = () => {
                 </div>
               </div>
               
-              {/* 阶段进度条 */}
               {phaseProgress && phaseProgress.required > 0 && (
                 <div className="flex items-center gap-3">
                   <span className="text-white text-sm">
@@ -136,11 +134,8 @@ const GameStatus: React.FC = () => {
           </div>
         </div>
 
-        {/* 主要游戏区域 */}
         <div className="grid grid-cols-12 gap-6">
-          {/* 左侧：角色信息和控制 */}
           <div className="col-span-3 space-y-4">
-            {/* 角色信息卡片 */}
             {roleInfo && (
               <div className="bg-white bg-opacity-10 backdrop-blur-md rounded-xl p-4 border border-white border-opacity-20">
                 <div className="text-center">
@@ -265,24 +260,6 @@ const GameStatus: React.FC = () => {
           </div>
         </div>
       </div>
-      
-      {/* 添加CSS动画 */}
-      <style jsx>{`
-        @keyframes fade-in {
-          from {
-            opacity: 0;
-            transform: translateY(-10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        
-        .animate-fade-in {
-          animation: fade-in 0.3s ease-out;
-        }
-      `}</style>
     </div>
   );
 };

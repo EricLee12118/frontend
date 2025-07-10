@@ -156,6 +156,7 @@ export default class GameState {
             }
             return true;
         } else if (this.currentPhase === 'day') {
+            
             return true; 
         } else if (this.currentPhase === 'vote') {
             for (const userId of this.phaseCompletions.requiredVoters) {

@@ -313,8 +313,7 @@ export default class PhaseManager {
             });
         }
     }
-
-    // 其他辅助方法...
+    
     setRequiredActors(room, phase) {
         room.game.state.resetPhaseCompletions();
         const alivePlayers = room.game.getAlivePlayers();

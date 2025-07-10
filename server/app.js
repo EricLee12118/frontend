@@ -13,7 +13,8 @@ nextApp.prepare().then(() => {
     const httpServer = http.createServer(nextApp.getRequestHandler());
     const io = new Server(httpServer, {
         cors: {
-            origin: dev ? 'http://localhost:3000' : 'http://172.24.32.171:3000',
+            // origin: dev ? 'http://localhost:3000' : 'http://172.24.32.171:3000',
+            origin: '*',
             methods: ['GET', 'POST'],
             credentials: true,
         },

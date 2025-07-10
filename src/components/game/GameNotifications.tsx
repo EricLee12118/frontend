@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Dialog } from '@headlessui/react';
 import { X, Bell, MessageCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -7,6 +7,57 @@ import { NotificaitonProps } from '@/types/chat';
 const GameNotifications: React.FC<NotificaitonProps> = ({ messages = [] }) => {
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [showNotification, setShowNotification] = useState(true);
+  const [unreadCount, setUnreadCount] = useState(0);
+  
+  // 使用 ref 跟踪之前的消息数量
+  const prevMessageCountRef = useRef(messages.length);
+  
+  // 新消息到达时自动显示通知
+  useEffect(() => {
+    const currentMessageCount = messages.length;
+    
+    // 检测到新消息
+    if (currentMessageCount > prevMessageCountRef.current) {
+      // 有新消息时自动显示通知
+      setShowNotification(true);
+      setUnreadCount(prev => prev + (currentMessageCount - prevMessageCountRef.current));
+      
+      // 如果历史面板是打开的，关闭通知（可选）
+      if (isHistoryOpen) {
+        setShowNotification(false);
+      }
+    }
+    
+    // 更新消息计数
+    prevMessageCountRef.current = currentMessageCount;
+  }, [messages, isHistoryOpen]);
+  
+  // 自动关闭通知的定时器
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    
+    if (showNotification && messages.length > 0) {
+      timer = setTimeout(() => {
+        setShowNotification(false);
+      }, 5000); // 5秒后自动关闭
+    }
+    
+    return () => clearTimeout(timer);
+  }, [showNotification, messages]);
+  
+  const openHistoryPanel = () => {
+    setIsHistoryOpen(true);
+    setUnreadCount(0); 
+    setShowNotification(false); 
+  };
+  
+  const closeHistoryPanel = () => {
+    setIsHistoryOpen(false);
+    
+    if (messages.length > prevMessageCountRef.current) {
+      setShowNotification(true);
+    }
+  };
 
   const getMessageStyle = (isSystem: boolean | undefined) => {
     return isSystem 
@@ -24,19 +75,24 @@ const GameNotifications: React.FC<NotificaitonProps> = ({ messages = [] }) => {
     <>
       <div className="relative">
         <motion.div
-          className="fixed bottom-4 right-4 z-10"
+          className="fixed bottom-4 right-4 z-50"
           initial={{ opacity: 0, y: 50 }}
           animate={{ opacity: 1, y: 0 }}
+          transition={{ type: "spring", stiffness: 300, damping: 30 }}
         >
           <button
-            onClick={() => setIsHistoryOpen(true)}
-            className="bg-blue-600 text-white p-3 rounded-full shadow-lg hover:bg-blue-700 transition-colors"
+            onClick={openHistoryPanel}
+            className="bg-blue-600 text-white p-3 rounded-full shadow-lg hover:bg-blue-700 transition-colors relative"
           >
             <Bell className="w-6 h-6" />
-            {messages && messages.length > 0 && (
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                {messages.length}
-              </span>
+            {unreadCount > 0 && (
+              <motion.span
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center"
+              >
+                {unreadCount}
+              </motion.span>
             )}
           </button>
         </motion.div>
@@ -47,7 +103,8 @@ const GameNotifications: React.FC<NotificaitonProps> = ({ messages = [] }) => {
               initial={{ opacity: 0, x: 100 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 100 }}
-              className={`fixed bottom-20 right-4 w-80 border rounded-lg p-3 shadow-lg ${getMessageStyle(
+              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              className={`fixed bottom-20 right-4 w-80 border rounded-lg p-3 shadow-lg z-40 ${getMessageStyle(
                 latestMessage.isSystem
               )}`}
             >
@@ -68,6 +125,13 @@ const GameNotifications: React.FC<NotificaitonProps> = ({ messages = [] }) => {
                   </div>
                 </div>
               </div>
+              
+              <motion.div
+                className="absolute bottom-0 left-0 h-1 bg-blue-500 rounded-b"
+                initial={{ width: '100%' }}
+                animate={{ width: '0%' }}
+                transition={{ duration: 5, ease: "linear" }}
+              />
             </motion.div>
           )}
         </AnimatePresence>
@@ -75,7 +139,7 @@ const GameNotifications: React.FC<NotificaitonProps> = ({ messages = [] }) => {
 
       <Dialog
         open={isHistoryOpen}
-        onClose={() => setIsHistoryOpen(false)}
+        onClose={closeHistoryPanel}
         className="relative z-50"
       >
         <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
@@ -88,18 +152,21 @@ const GameNotifications: React.FC<NotificaitonProps> = ({ messages = [] }) => {
                 消息历史
               </span>
               <button
-                onClick={() => setIsHistoryOpen(false)}
+                onClick={closeHistoryPanel}
                 className="text-gray-500 hover:text-gray-700"
               >
                 <X className="w-5 h-5" />
               </button>
             </Dialog.Title>
 
-            <div className="space-y-3 max-h-96 overflow-y-auto">
+            <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
               {messages && messages.length > 0 ? (
                 messages.slice().reverse().map((msg, index) => (
-                  <div
+                  <motion.div
                     key={index}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05 }}
                     className={`border rounded-lg p-3 ${getMessageStyle(msg.isSystem)}`}
                   >
                     <div className="flex items-start gap-2">
@@ -112,11 +179,18 @@ const GameNotifications: React.FC<NotificaitonProps> = ({ messages = [] }) => {
                         </div>
                       </div>
                     </div>
-                  </div>
+                  </motion.div>
                 ))
               ) : (
-                <div className="text-center text-gray-500">暂无消息</div>
+                <div className="text-center text-gray-500 py-8">
+                  <div className="mb-2">📭</div>
+                  <p>暂无消息</p>
+                </div>
               )}
+            </div>
+            
+            <div className="mt-4 text-center text-sm text-gray-500">
+              {messages.length} 条消息
             </div>
           </Dialog.Panel>
         </div>

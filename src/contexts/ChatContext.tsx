@@ -15,7 +15,7 @@ import {
   PhaseProgress,
   GameNotification
 } from '@/types/chat'; 
-
+import { v4 as uuidv4 } from 'uuid';
 const RoomContext = createContext<RoomContextType | null>(null);
 
 export function useRoomContext() {
@@ -87,7 +87,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
   const handleSeerResult = (result: any) => {
     setSeerResult(result);
-    // 5秒后清除结果
     setTimeout(() => setSeerResult(null), 5000);
   };
 
@@ -130,33 +129,15 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     }]);
   };
 
-  const addGameNotification = (notification: Omit<GameNotification, 'id' | 'timestamp'>) => {
-    const newNotification: GameNotification = {
-      ...notification,
-      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-      timestamp: new Date().toISOString()
-    };
-    
-    setGameNotifications(prev => [...prev, newNotification]);
-    
-    // 如果有自动消失时间，设置定时器
-    if (notification.duration) {
-      setTimeout(() => {
-        removeGameNotification(newNotification.id);
-      }, notification.duration);
-    }
-  };
 
   // 移除游戏通知
   const removeGameNotification = (id: string) => {
     setGameNotifications(prev => prev.filter(notif => notif.id !== id));
   };
 
-  // 处理系统消息并转换为游戏通知
   const handleReceiveMessage = (msg: Message) => {
     setMessages(prev => [...prev, msg]);
     
-    // 如果是系统消息，添加到游戏通知
     if (msg.isSystem && roomState === 'playing') {
       let notificationType: GameNotification['type'] = 'info';
       let title = '系统消息';
@@ -175,12 +156,13 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         title = '游戏结束';
       }
       
-      addGameNotification({
+      setGameNotifications(prev => [...prev, {
+        id: uuidv4(),
         type: notificationType,
-        title: title,
+        title,
         message: msg.message,
-        duration: notificationType === 'info' ? 5000 : 8000
-      });
+        timestamp: msg.timestamp
+      }]);
     }
   };
 
@@ -258,7 +240,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     newSocket.on('connect', handleConnect);
     newSocket.on('reconnect', handleReconnect);
     newSocket.on('rooms_list', setRooms);
-    newSocket.on('receive_msg', (msg: Message) => setMessages(prev => [...prev, msg]));    
     newSocket.on('room_users', (receivedUsers: User[]) => setUsers(receivedUsers));
     newSocket.on('message_history', setMessages);
     newSocket.on('room_state', handleRoomState);
@@ -475,7 +456,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     skipAction,
     phaseProgress,
     gameNotifications,
-    addGameNotification,
     removeGameNotification,
     setPhaseProgress,
   };

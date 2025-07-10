@@ -75,7 +75,6 @@ const GameActions: React.FC = () => {
     setSelectedTarget('');
   };
 
-  // 渲染投票统计
   const renderVoteStats = () => {
     if (!currentVoteStats || !voteRequired) return null;
 
@@ -104,7 +103,6 @@ const GameActions: React.FC = () => {
     );
   };
 
-  // 渲染夜间行动界面
   const renderNightAction = () => {
     if (!nightActionRequired) return null;
 
@@ -271,7 +269,6 @@ const GameActions: React.FC = () => {
     );
   };
 
-  // 渲染猎人技能界面
   const renderHunterAction = () => {
     if (!hunterSkillRequired) return null;
 
@@ -320,7 +317,6 @@ const GameActions: React.FC = () => {
     );
   };
 
-  // 渲染预言家查验结果
   const renderSeerResult = () => {
     if (!seerResult) return null;
 
