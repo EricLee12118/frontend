@@ -19,6 +19,7 @@ export default class PhaseManager {
         room.game.state.phaseStartTime = Date.now();
         room.game.state.resetVotes();
         room.game.state.resetNightActions();
+        room.game.state.lastNightDeath = null;
         this.setRequiredActors(room, 'night');
 
         this.eventBroadcaster.broadcastGameState(roomId);
@@ -48,10 +49,67 @@ export default class PhaseManager {
                 case 'seer':
                     this.sendSeerAction(socket, roomId, player);
                     break;
-                case 'witch':
-                    this.sendWitchAction(socket, roomId, player);
-                    break;
             }
+        });
+    }
+
+    checkWerewolfActionsComplete(roomId) {
+        const room = this.globalState.getRoom(roomId);
+        const aliveWerewolves = room.game.getAlivePlayers()
+            .filter(p => room.game.state.roleAssignments[p.userId] === 'werewolf');
+
+        const completedWerewolves = aliveWerewolves.filter(p => 
+            room.game.state.phaseCompletions.nightActionsCompleted.has(p.userId)
+        );
+
+        if (completedWerewolves.length === aliveWerewolves.length && aliveWerewolves.length > 0) {
+            this.processWerewolfKillAndNotifyWitch(roomId);
+        }
+    }
+
+    processWerewolfKillAndNotifyWitch(roomId) {
+        const room = this.globalState.getRoom(roomId);
+        const state = room.game.state;
+        
+        const voteCount = {};
+        logger.info('狼人投票结果：', state.nightActions.werewolfVotes);
+
+        Object.values(state.nightActions.werewolfVotes).forEach(targetId => {
+            voteCount[targetId] = (voteCount[targetId] || 0) + 1;
+        });
+
+        let killedTarget = null;
+        if (Object.keys(voteCount).length > 0) {
+            const maxVotes = Math.max(...Object.values(voteCount));
+            const targets = Object.keys(voteCount).filter(id => voteCount[id] === maxVotes);
+            
+            if (targets.length === 1) {
+                killedTarget = room.getUser(targets[0]);
+                state.lastNightDeath = targets[0];
+                logger.info(`狼人决定击杀: ${killedTarget.username}`);
+            } else {
+                logger.info('狼人投票平票，无人被击杀');
+            }
+        } else {
+            logger.info('狼人没有投票，无人被击杀');
+        }
+
+        this.sendWitchActionInstructions(roomId);
+    }
+
+    sendWitchActionInstructions(roomId) {
+        const room = this.globalState.getRoom(roomId);
+        const alivePlayers = room.game.getAlivePlayers();
+        
+        const aliveWitches = alivePlayers.filter(player => 
+            room.game.state.roleAssignments[player.userId] === 'witch'
+        );
+
+        aliveWitches.forEach(player => {
+            const socket = this.io.sockets.sockets.get(this.globalState.activeUsers.get(player.userId));
+            if (!socket || player.isAI) return;
+
+            this.sendWitchAction(socket, roomId, player);
         });
     }
 
@@ -90,27 +148,39 @@ export default class PhaseManager {
         const room = this.globalState.getRoom(roomId);
         const state = room.game.state;
         
-        const lastNightDeath = state.lastNightDeath;
-        const deadPlayer = lastNightDeath ? room.getUser(lastNightDeath) : null;
+        let victimPlayer = null;
+        if (state.lastNightDeath) {
+            victimPlayer = room.getUser(state.lastNightDeath);
+            logger.info(`女巫看到的受害者: ${victimPlayer ? victimPlayer.username : '未知'}`);
+        } else {
+            logger.info('女巫看到：昨夜无人被狼人击杀');
+        }
         
         const alivePlayers = room.game.getAlivePlayers()
             .filter(p => p.userId !== player.userId)
             .map(p => ({ userId: p.userId, username: p.username, position: p.pos }));
 
-        const canSaveSelf = !state.isFirstNight || (deadPlayer && deadPlayer.userId !== player.userId);
+        const canSaveSelf = !state.isFirstNight || (victimPlayer && victimPlayer.userId !== player.userId);
+        const canSaveVictim = victimPlayer && canSaveSelf;
 
         socket.emit('night_action_required', {
             action: 'witch_action',
             phase: 'night',
             hasAntidote: state.witchItems.hasAntidote,
             hasPoison: state.witchItems.hasPoison,
-            deadPlayer: deadPlayer && canSaveSelf ? { 
-                userId: deadPlayer.userId, 
-                username: deadPlayer.username 
+            potentialVictim: victimPlayer && canSaveVictim ? { 
+            userId: victimPlayer.userId, 
+            username: victimPlayer.username 
+            } : null,
+            deadPlayer: victimPlayer && canSaveVictim ? { 
+                userId: victimPlayer.userId, 
+                username: victimPlayer.username 
             } : null,
             alivePlayers: alivePlayers,
-            message: '请选择是否使用解药或毒药',
-            timeLimit: 120000,
+            message: victimPlayer ? 
+                `昨夜 ${victimPlayer.username} 被狼人击杀，请选择是否使用解药或毒药` :
+                '昨夜平安无事，请选择是否使用毒药',
+            timeLimit: 60000,
             isFirstNight: state.isFirstNight
         });
     }
@@ -282,6 +352,10 @@ export default class PhaseManager {
         const room = this.globalState.getRoom(roomId);
         if (!room?.game.state.isActive) return;
 
+        if (room.game.state.currentPhase === 'night') {
+            this.checkWerewolfActionsComplete(roomId);
+        }
+
         if (room.game.state.isPhaseCompleted()) {
             logger.info(`房间 ${roomId} 阶段 ${room.game.state.currentPhase} 所有行动已完成，自动进入下一阶段`);
             
@@ -339,7 +413,6 @@ export default class PhaseManager {
             default: return { success: false, message: '当前阶段无法强制跳过' };
         }
 
-        // this.eventBroadcaster.broadcastSystemMessage(roomId, '房主强制进入下一阶段');
         return { success: true };
     }
 
@@ -418,7 +491,6 @@ export default class PhaseManager {
 
         return message;
     }
-
 
     triggerHunterSkill(roomId, hunterId) {
         const room = this.globalState.getRoom(roomId);

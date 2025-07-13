@@ -44,7 +44,6 @@ export default class ActionProcessor {
         room.game.state.nightActions.werewolfVotes[voterId] = targetId;
         room.game.state.phaseCompletions.nightActionsCompleted.add(voterId);
         voter.setNightActionCompleted(true);
-
         this.checkAndProgressPhase(roomId);
         logger.info(`狼人 ${voter.username} 投票击杀 ${target.username}`);
 
@@ -63,6 +62,7 @@ export default class ActionProcessor {
 
         const result = room.game.actions.seerCheck(targetId);
         room.game.state.phaseCompletions.nightActionsCompleted.add(seerId);
+
         seer.setNightActionCompleted(true);
 
         this.sendSeerResult(seerId, result);

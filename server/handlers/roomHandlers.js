@@ -44,7 +44,6 @@ export default class RoomHandlers {
         if (!result.success) {
             socket.emit('validation_error', result.message);
         } else {
-            this.gameService.printRoleAssignments(data.roomId);
             setTimeout(() => this.gameService.startNightPhase(data.roomId), 3000);
         }
     }

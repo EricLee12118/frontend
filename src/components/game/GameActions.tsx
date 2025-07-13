@@ -106,74 +106,93 @@ const GameActions: React.FC = () => {
   const renderNightAction = () => {
     if (!nightActionRequired) return null;
 
-    const { action, targets, message, hasAntidote, hasPoison, deadPlayer, alivePlayers } = nightActionRequired;
-
+    const { action, targets, message, hasAntidote, hasPoison, alivePlayers, potentialVictim, deadPlayer, isFirstNight } = nightActionRequired;
+    const victim = potentialVictim || deadPlayer;
     if (action === 'witch_action') {
       return (
         <div className="bg-purple-100 border border-purple-300 rounded-lg p-4">
-          <h3 className="text-lg font-semibold text-purple-800 mb-3">
-            🧙‍♀️ 女巫行动 (剩余时间: {timeLeft}s)
-          </h3>
-          <p className="text-purple-700 mb-4">{message}</p>
-          
-          <div className="space-y-3">
-            {/* 解药选项 */}
-            {hasAntidote && deadPlayer && (
-              <div className="bg-white p-3 rounded border">
-                <h4 className="font-medium text-green-700 mb-2">💊 使用解药</h4>
-                <p className="text-sm text-gray-600 mb-2">
-                  {deadPlayer.username} 被击杀，是否使用解药救活？
-                </p>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => witchAction('save', deadPlayer.userId)}
-                    className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600"
-                  >
-                    使用解药
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* 毒药选项 */}
-            {hasPoison && alivePlayers && (
-              <div className="bg-white p-3 rounded border">
-                <h4 className="font-medium text-red-700 mb-2">☠️ 使用毒药</h4>
-                <select
-                  value={selectedTarget}
-                  onChange={(e) => setSelectedTarget(e.target.value)}
-                  className="w-full p-2 border rounded mb-2"
-                >
-                  <option value="">选择要毒杀的目标...</option>
-                  {alivePlayers.map(player => (
-                    <option key={player.userId} value={player.userId}>
-                      {player.username} ({player.position}号位)
-                    </option>
-                  ))}
-                </select>
-                {selectedTarget && (
-                  <button
-                    onClick={() => witchAction('poison', selectedTarget)}
-                    className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
-                  >
-                    使用毒药
-                  </button>
-                )}
-              </div>
-            )}
-
-            <button
-              onClick={handleSkip}
-              className="w-full bg-gray-500 text-white py-2 rounded hover:bg-gray-600"
-            >
-              跳过行动
-            </button>
-          </div>
+        <h3 className="text-lg font-semibold text-purple-800 mb-3">
+          🧙‍♀️ 女巫行动 (剩余时间: {timeLeft}s)
+        </h3>
+        <p className="text-purple-700 mb-4">{message}</p>
+        
+        <div className="bg-white p-3 rounded border mb-3">
+          <h4 className="font-medium text-gray-700 mb-2">📊 夜晚情况</h4>
+          {victim ? (
+            <p className="text-sm text-red-600">
+              🗡️ {victim.username} 被狼人选为击杀目标
+            </p>
+          ) : (
+            <p className="text-sm text-green-600">
+              ✅ 昨夜平安无事
+            </p>
+          )}
+          {isFirstNight && (
+            <p className="text-xs text-gray-500 mt-1">
+              ⚠️ 第一夜不能救自己
+            </p>
+          )}
         </div>
+        
+        <div className="space-y-3">
+          {hasAntidote && victim && (
+            <div className="bg-white p-3 rounded border">
+              <h4 className="font-medium text-green-700 mb-2">💊 使用解药</h4>
+              <p className="text-sm text-gray-600 mb-2">
+                是否救活 {victim.username}？
+              </p>
+              <button
+                onClick={() => witchAction('save', victim.userId)}
+                className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+              >
+                使用解药救活
+              </button>
+            </div>
+          )}
+
+          {hasPoison && alivePlayers && (
+            <div className="bg-white p-3 rounded border">
+              <h4 className="font-medium text-red-700 mb-2">☠️ 使用毒药</h4>
+              <select
+                value={selectedTarget}
+                onChange={(e) => setSelectedTarget(e.target.value)}
+                className="w-full p-2 border rounded mb-2"
+              >
+                <option value="">选择要毒杀的目标...</option>
+                {alivePlayers.map(player => (
+                  <option key={player.userId} value={player.userId}>
+                    {player.username} ({player.position}号位)
+                  </option>
+                ))}
+              </select>
+              {selectedTarget && (
+                <button
+                  onClick={() => witchAction('poison', selectedTarget)}
+                  className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+                >
+                  使用毒药
+                </button>
+              )}
+            </div>
+          )}
+
+          {!hasAntidote && !hasPoison && (
+            <div className="bg-gray-100 p-3 rounded">
+              <p className="text-gray-600 text-center">你已经没有药剂可以使用了</p>
+            </div>
+          )}
+
+          <button
+            onClick={handleSkip}
+            className="w-full bg-gray-500 text-white py-2 rounded hover:bg-gray-600"
+          >
+            跳过行动
+          </button>
+        </div>
+      </div>
       );
     }
 
-    // 其他夜间行动（狼人击杀、预言家查验）
     return (
       <div className="bg-gray-100 border border-gray-300 rounded-lg p-4">
         <h3 className="text-lg font-semibold mb-3">

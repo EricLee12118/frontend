@@ -124,10 +124,12 @@ export interface NightActionData {
   targets?: VoteTarget[];
   hasAntidote?: boolean;
   hasPoison?: boolean;
-  deadPlayer?: { userId: string; username: string } | null;
+  deadPlayer?: { userId: string; username: string } | null;  
+  potentialVictim?: { userId: string; username: string } | null;  
   alivePlayers?: VoteTarget[];
   message: string;
   timeLimit: number;
+  isFirstNight?: boolean;
 }
 
 export interface VoteStats {
