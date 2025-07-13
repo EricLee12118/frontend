@@ -121,11 +121,15 @@ export default class PhaseManager {
         room.game.state.nextDay();
 
         this.announceNightResults(roomId, nightResults);
-        this.eventBroadcaster.broadcastGameState(roomId);
-        this.eventBroadcaster.broadcastSystemMessage(roomId,
-            `第 ${room.game.state.dayCount} 天白天开始，请开始讨论。`);
 
-        this.setPhaseTimer(roomId, () => this.startVotePhase(roomId), 30000);
+        setTimeout(() => {
+            this.eventBroadcaster.broadcastGameState(roomId);
+            this.eventBroadcaster.broadcastSystemMessage(roomId,
+                `第 ${room.game.state.dayCount} 天白天开始，请开始讨论。`);
+            
+            this.setPhaseTimer(roomId, () => this.startVotePhase(roomId), 30000);
+        }, 2000); 
+
         return { success: true };
     }
 
@@ -217,7 +221,6 @@ export default class PhaseManager {
         const room = this.globalState.getRoom(roomId);
         const results = [];
 
-        // 按正确顺序执行夜间行动：狼人击杀 -> 女巫行动
         const killResult = room.game.actions.werewolfKill();
         if (killResult) {
             results.push({
@@ -233,7 +236,7 @@ export default class PhaseManager {
         return results;
     }
 
-    finishVotePhase(roomId) {
+    async finishVotePhase(roomId) {
         const room = this.globalState.getRoom(roomId);
         if (room?.game.state.currentPhase !== 'vote') return;
 
@@ -242,22 +245,11 @@ export default class PhaseManager {
         
         this.broadcastVoteResults(roomId, voteResult.voteStats);
         
+        await new Promise(resolve => setTimeout(resolve, 3000));
+
         if (voteResult.success) {
             this.eventBroadcaster.broadcastSystemMessage(roomId,
                 `🗳️ ${voteResult.eliminated.username} 被投票淘汰！`);
-            
-            this.io.to(roomId).emit('player_eliminated', {
-                eliminated: {
-                    userId: voteResult.eliminated.userId,
-                    username: voteResult.eliminated.username,
-                    role: room.game.state.roleAssignments[voteResult.eliminated.userId],
-                    position: room.game.state.positionAssignments[voteResult.eliminated.userId]
-                },
-                cause: 'vote',
-                voteCount: voteResult.voteCount,
-                day: room.game.state.dayCount,
-                timestamp: new Date().toISOString()
-            });
             
             const eliminatedRole = room.game.state.roleAssignments[voteResult.eliminated.userId];
             if (eliminatedRole === 'hunter') {
@@ -280,7 +272,9 @@ export default class PhaseManager {
             return { success: true, gameEnded: true };
         }
 
+        await new Promise(resolve => setTimeout(resolve, 1000));
         this.setPhaseTimer(roomId, () => this.startNightPhase(roomId), 5000);
+        
         return { success: true };
     }
 
@@ -345,7 +339,7 @@ export default class PhaseManager {
             default: return { success: false, message: '当前阶段无法强制跳过' };
         }
 
-        this.eventBroadcaster.broadcastSystemMessage(roomId, '房主强制进入下一阶段');
+        // this.eventBroadcaster.broadcastSystemMessage(roomId, '房主强制进入下一阶段');
         return { success: true };
     }
 
@@ -369,7 +363,7 @@ export default class PhaseManager {
         return { success: true };
     }
 
-    endGame(roomId, winner, message) {
+    async endGame(roomId, winner, message) {
         const room = this.globalState.getRoom(roomId);
         if (!room) return;
 
@@ -377,16 +371,14 @@ export default class PhaseManager {
         room.endGame();
 
         this.eventBroadcaster.broadcastSystemMessage(roomId, message);
+        
+        await new Promise(resolve => setTimeout(resolve, 5000));
         this.eventBroadcaster.broadcastSystemMessage(roomId, '游戏结束！房间已重置，可以开始新游戏。');
+        
+        await new Promise(resolve => setTimeout(resolve, 5000));
         this.eventBroadcaster.broadcastGameState(roomId);
         this.eventBroadcaster.broadcastRoomState(roomId);
         this.eventBroadcaster.broadcastRoomUsers(roomId);
-
-        this.io.to(roomId).emit('game_ended', {
-            winner: winner,
-            message: message,
-            timestamp: new Date().toISOString()
-        });
 
         logger.info(`房间 ${roomId} 游戏结束，胜者: ${winner}`);
     }
@@ -397,52 +389,36 @@ export default class PhaseManager {
 
         const resultMessage = this.formatVoteResults(voteStats, room);
         
-        this.io.to(roomId).emit('vote_results', {
-            type: 'vote',
-            voteStats: voteStats,
-            message: resultMessage,
-            timestamp: new Date().toISOString()
-        });
-
         this.eventBroadcaster.broadcastSystemMessage(roomId, resultMessage);
     }
 
     formatVoteResults(voteStats, room) {
         const { voteResults, voterDetails, totalVotes, alivePlayers } = voteStats;
         
-        let message = `\n📊 投票淘汰结果统计:\n总投票数: ${totalVotes}/${alivePlayers}\n─────────────────────\n`;
+        let message = `📊 投票淘汰结果统计\n总投票数: ${totalVotes}/${alivePlayers}\n`;
 
-        const sortedResults = Object.entries(voteResults).sort(([,a], [,b]) => b.count - a.count);
-
-        if (sortedResults.length === 0) {
-            message += '🔸 无人获得投票\n';
+        if (Object.keys(voteResults).length === 0) {
+            message += "• 无人获得投票\n";
         } else {
-            sortedResults.forEach(([targetId, data], index) => {
+            Object.entries(voteResults).forEach(([targetId, data]) => {
                 const target = room.getUser(targetId);
                 const targetName = target ? target.username : '未知用户';
-                const emoji = ['🥇', '🥈', '🥉'][index] || '🔸';
-                
-                message += `${emoji} ${targetName}: ${data.count}票\n`;
-                
-                if (data.voters.length > 0) {
-                    const voterNames = data.voters.map(v => v.username).join(', ');
-                    message += `   └─ 投票者: ${voterNames}\n`;
-                }
+                const voterNames = data.voters.map(v => v.username).join(', ');
+                message += `• ${targetName}: ${data.count}票 (投票者: ${voterNames})\n`;
             });
         }
-
-        message += '─────────────────────\n';
 
         const votedUserIds = new Set(Object.keys(voterDetails));
         const aliveUsers = room.game.getAlivePlayers();
         const notVotedUsers = aliveUsers.filter(user => !votedUserIds.has(user.userId));
         
         if (notVotedUsers.length > 0) {
-            message += `❌ 未投票: ${notVotedUsers.map(u => u.username).join(', ')}\n`;
+            message += `• 未投票: ${notVotedUsers.map(u => u.username).join(', ')}\n`;
         }
 
         return message;
     }
+
 
     triggerHunterSkill(roomId, hunterId) {
         const room = this.globalState.getRoom(roomId);

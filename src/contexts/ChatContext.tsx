@@ -106,18 +106,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     setHunterSkillRequired(data);
   };
 
-  const handleActionSuccess = (data: { message: string }) => {
-    setNightActionRequired(null);
-    setVoteRequired(null);
-    setHunterSkillRequired(null);
-    
-    setMessages(prev => [...prev, {
-      sender: '系统',
-      message: data.message,
-      timestamp: new Date().toISOString(),
-      isSystem: true
-    }]);
-  };
 
   const handleVoteResults = (data: any) => {
     setMessages(prev => [...prev, {
@@ -130,7 +118,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   };
 
 
-  // 移除游戏通知
   const removeGameNotification = (id: string) => {
     setGameNotifications(prev => prev.filter(notif => notif.id !== id));
   };
@@ -181,15 +168,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     setCurrentVoteStats(data.voteStats);
   };
 
-  const handlePlayerEliminated = (data: any) => {
-    setMessages(prev => [...prev, {
-      sender: '系统',
-      message: `${data.eliminated.username} 被淘汰！角色：${data.eliminated.role}`,
-      timestamp: data.timestamp,
-      isSystem: true,
-      type: 'elimination'
-    }]);
-  };
 
   roomIdRef.current = roomId;
 
@@ -253,14 +231,11 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     newSocket.on('night_action_required', handleNightActionRequired);
     newSocket.on('vote_required', handleVoteRequired);
     newSocket.on('hunter_skill_required', handleHunterSkillRequired);
-    newSocket.on('action_success', handleActionSuccess);
-    newSocket.on('vote_success', handleActionSuccess);
     
     // 投票相关事件
     newSocket.on('vote_results', handleVoteResults);
     newSocket.on('vote_update', handleVoteUpdate);
     newSocket.on('vote_phase_started', handleVotePhaseStarted);
-    newSocket.on('player_eliminated', handlePlayerEliminated);
     
     const errorHandler = (error: string) => alert(error);
     newSocket.on('validation_error', errorHandler);

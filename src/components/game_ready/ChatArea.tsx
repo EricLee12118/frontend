@@ -3,15 +3,12 @@ import { NotificaitonProps } from '@/types/chat';
 
 const ChatArea: React.FC<NotificaitonProps> = ({ 
   messages, 
-  message, 
-  setMessage, 
-  sendMessage, 
   leaveRoom, 
   roomState 
 }) => {
   return (
     <div className="bg-gray-50 p-4 rounded-lg">
-      <h2 className="text-xl font-semibold mb-4">💬 聊天区域</h2>
+      <h2 className="text-xl font-semibold mb-4">💬 历史消息</h2>
       <div className="h-64 overflow-y-auto border p-2 mb-4 bg-white rounded-lg shadow-inner">
         {messages.map((msg, i) => (
           <div
@@ -28,21 +25,8 @@ const ChatArea: React.FC<NotificaitonProps> = ({
         ))}
       </div>
 
-      <form onSubmit={sendMessage} className="flex flex-col">
-        <input
-          type="text"
-          placeholder="输入消息..."
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          className="flex-1 p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2"
-          required
-        />
-        <button
-          type="submit"
-          className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition duration-300 mb-2"
-        >
-          发送
-        </button>
+      <form className="flex flex-col">
+
         <button
           type="button"
           onClick={leaveRoom}

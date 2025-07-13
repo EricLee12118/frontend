@@ -4,29 +4,14 @@ import { useRoomContext } from '@/contexts/ChatContext';
 export const RoomsList = () => {
   const { rooms, username, roomId, setRoomId, joinRoom, leaveRoom } = useRoomContext();
   const [showJoinModal, setShowJoinModal] = useState(false);
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [newRoomId, setNewRoomId] = useState('');
 
   const handleJoinRoom = () => {
     setShowJoinModal(false);
     joinRoom();
   };
 
-  const handleCreateRoom = () => {
-    console.log('创建房间:', newRoomId);
-    setShowCreateModal(false);
-  };
-
   return (
     <div className="min-h-screen p-6">
-      <div className="bg-white bg-opacity-90 p-8 rounded-lg shadow-lg max-w-2xl mx-auto text-center">
-        <div
-          className="p-5 rounded-lg hover:bg-gray-100 transition duration-300 cursor-pointer"
-          onClick={() => setShowCreateModal(true)}
-        >
-          创建房间
-        </div>
-      </div>
 
       <div className="bg-white bg-opacity-90 p-6 rounded-lg shadow-md mt-6 my-6">
         <h2 className="text-xl font-semibold mb-4">推荐房间</h2>
@@ -75,39 +60,6 @@ export const RoomsList = () => {
         </div>
       )}
 
-      {/* 创建房间的模态框 */}
-      {showCreateModal && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg">
-            <h2 className="text-lg font-semibold mb-4">创建新房间</h2>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">房间ID</label>
-              <input
-                type="text"
-                placeholder="输入房间ID"
-                value={newRoomId}
-                onChange={(e) => setNewRoomId(e.target.value)}
-                className="w-full p-2 border rounded"
-                required
-              />
-            </div>
-            <div className="flex justify-end mt-4">
-              <button
-                onClick={() => setShowCreateModal(false)}
-                className="mr-2 text-gray-600"
-              >
-                取消
-              </button>
-              <button
-                onClick={handleCreateRoom}
-                className="bg-blue-500 hover:bg-blue-600 text-white p-2 rounded"
-              >
-                创建房间
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       <form onSubmit={joinRoom} className="mb-6 p-6 border rounded-lg bg-gray-50">
         <div className="flex flex-col space-y-4">

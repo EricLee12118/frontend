@@ -20,6 +20,19 @@ export interface NotificaitonProps {
   roomState: string;
 }
 
+export interface VoteResult {
+  targetId: string;
+  targetName: string;
+  voteCount: number;
+  voters: Array<{ userId: string; username: string }>;
+}
+
+export interface VoteResultData {
+  totalVotes: number;
+  alivePlayers: number;
+  results: VoteResult[];
+  notVoted: Array<{ userId: string; username: string }>;
+}
 
 export interface PhaseProgress {
   completed: number;
@@ -29,12 +42,13 @@ export interface PhaseProgress {
 
 export interface GameNotification {
   id: string;
-  type: 'info' | 'warning' | 'success' | 'error' | 'death' | 'elimination' | 'phase';
+  type: 'info' | 'warning' | 'success' | 'error' | 'death' | 'elimination' | 'phase' | 'vote';
   title: string;
   message: string;
   timestamp: string;
-  duration?: number; // 自动消失时间，毫秒
+  duration?: number;
 }
+
 
 export interface Message {
   sender: string;
@@ -162,7 +176,6 @@ export interface RoomContextType {
   currentVoteStats: VoteStats | null;
   phaseProgress: PhaseProgress | null;
   gameNotifications: GameNotification[];
-  removeGameNotification: (id: string) => void;
   
   // 游戏操作方法
   getRoleInfo: () => void;

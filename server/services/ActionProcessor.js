@@ -22,9 +22,6 @@ export default class ActionProcessor {
         const totalVotes = room.game.actions.recordVote(voterId, targetId);
         voter.setVoted(true);
 
-        this.eventBroadcaster.broadcastSystemMessage(roomId,
-            `${voter.username} 投票给 ${target.username} (${totalVotes}/${room.game.getAlivePlayers().length})`);
-
         this.broadcastVoteUpdate(roomId, voter, target, room.game.actions.getVoteResults());
         this.eventBroadcaster.broadcastRoomUsers(roomId);
         

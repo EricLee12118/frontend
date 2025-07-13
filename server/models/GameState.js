@@ -15,11 +15,11 @@ export default class GameState {
         this.voteDetails = {};
         
         this.settings = {
-            werewolves: 2,
+            werewolves: 3,
             villagers: 3,
             seer: 1,
             witch: 1,
-            hunter: 1
+            hunter: 0
         };
 
         this.nightActions = {
