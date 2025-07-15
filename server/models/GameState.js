@@ -43,6 +43,14 @@ export default class GameState {
             requiredNightRoles: new Set(),
             requiredVoters: new Set()
         };
+
+        this.discussion = {
+            currentSpeakerIndex: 0,
+            currentSpeakerId: null,
+            speakingOrder: [],
+            speakersCompleted: new Set(),
+            speakingStartTime: null
+        };
     }
 
     start() {
@@ -168,4 +176,15 @@ export default class GameState {
         }
         return false;
     }
+
+    resetDiscussionState() {
+        this.discussion = {
+            currentSpeakerIndex: 0,
+            currentSpeakerId: null,
+            speakingOrder: [],
+            speakersCompleted: new Set(),
+            speakingStartTime: null
+        };
+    }
+
 }

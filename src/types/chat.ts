@@ -118,6 +118,26 @@ export interface VoteTarget {
   position?: number;
 }
 
+export interface SpeakerInfo {
+  userId: string;
+  username: string;
+  position: number;
+}
+
+export interface DiscussionState {
+  currentSpeaker: SpeakerInfo | null;
+  speakerIndex: number;
+  totalSpeakers: number;
+  timeLimit: number;
+  isMySpeakingTurn: boolean;
+  speakingStartTime: number | null;
+}
+
+export interface SpeechEvent {
+  speakerId: string;
+  nextSpeakerIndex: number;
+}
+
 export interface NightActionData {
   action: 'werewolf_kill' | 'seer_check' | 'witch_action';
   phase: string;
@@ -166,7 +186,7 @@ export interface RoomContextType {
   roomState: RoomState;
   gameState: GameState;
   isRoomOwner: boolean;
-  
+
   // 游戏相关属性和方法
   roleInfo: RoleInfo | null;
   gameMessages: Message[];
@@ -178,6 +198,9 @@ export interface RoomContextType {
   currentVoteStats: VoteStats | null;
   phaseProgress: PhaseProgress | null;
   gameNotifications: GameNotification[];
+  discussionState: DiscussionState;
+  canSpeak: boolean;
+  endSpeech: () => void;
   
   // 游戏操作方法
   getRoleInfo: () => void;

@@ -65,4 +65,8 @@ export default class GameService {
     skipAction(roomId, userId, actionType) {
         return this.actionProcessor.skipAction(roomId, userId, actionType);
     }
+
+    endSpeech(roomId, userId) {
+        return this.phaseManager.endSpeech(roomId, userId);
+    }
 }

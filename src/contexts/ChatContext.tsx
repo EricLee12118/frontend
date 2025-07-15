@@ -13,9 +13,13 @@ import {
   NightActionData,
   VoteStats,
   PhaseProgress,
-  GameNotification
+  GameNotification,
+  DiscussionState,
+  SpeakerInfo,
+  SpeechEvent
 } from '@/types/chat'; 
 import { v4 as uuidv4 } from 'uuid';
+
 const RoomContext = createContext<RoomContextType | null>(null);
 
 export function useRoomContext() {
@@ -66,22 +70,49 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const [currentVoteStats, setCurrentVoteStats] = useState<VoteStats | null>(null);
   const [phaseProgress, setPhaseProgress] = useState<PhaseProgress | null>(null);
   const [gameNotifications, setGameNotifications] = useState<GameNotification[]>([]);
+  const [discussionState, setDiscussionState] = useState<DiscussionState>({
+    currentSpeaker: null,
+    speakerIndex: 0,
+    totalSpeakers: 0,
+    timeLimit: 300000,
+    isMySpeakingTurn: false,
+    speakingStartTime: null
+  });
+  const [canSpeak, setCanSpeak] = useState(false);
 
+  roomIdRef.current = roomId;
 
+  // 定义所有事件处理函数
   const handleRoomState = (state: { 
     state: RoomState; 
     creator: string;
     creatorId: string;
   }) => {
+    console.log('Room state updated:', state);
     setRoomState(state.state);
     setIsRoomOwner(!!user?.id && state.creatorId === user.id);
   };
 
   const handleGameState = (state: GameState) => {
+    console.log('Game state updated:', state);
     setGameState(state);
+    
+    // 如果不是白天阶段，重置讨论状态
+    if (state.phase !== 'day') {
+      setDiscussionState({
+        currentSpeaker: null,
+        speakerIndex: 0,
+        totalSpeakers: 0,
+        timeLimit: 300000,
+        isMySpeakingTurn: false,
+        speakingStartTime: null
+      });
+      setCanSpeak(false);
+    }
   };
 
   const handleRoleInfo = (info: RoleInfo) => {
+    console.log('Role info received:', info);
     setRoleInfo(info);
   };
 
@@ -95,17 +126,25 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   };
 
   const handleNightActionRequired = (data: NightActionData) => {
+    console.log('Night action required:', data);
     setNightActionRequired(data);
   };
 
+  const handleRoomUsers = (receivedUsers: User[]) => {
+    console.log('Room users updated:', receivedUsers);
+    console.log('Users with pos:', receivedUsers.filter(u => u.pos));
+    setUsers(receivedUsers);
+  };
+
   const handleVoteRequired = (data: { phase: string; targets: any[]; message: string; timeLimit: number }) => {
+    console.log('Vote required:', data);
     setVoteRequired(data);
   };
 
   const handleHunterSkillRequired = (data: { targets: any[]; message: string; timeLimit: number }) => {
+    console.log('Hunter skill required:', data);
     setHunterSkillRequired(data);
   };
-
 
   const handleVoteResults = (data: any) => {
     setMessages(prev => [...prev, {
@@ -117,15 +156,11 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     }]);
   };
 
-
-  const removeGameNotification = (id: string) => {
-    setGameNotifications(prev => prev.filter(notif => notif.id !== id));
-  };
-
   const handleReceiveMessage = (msg: Message) => {
     setMessages(prev => [...prev, msg]);
     
-    if (msg.isSystem && roomState === 'playing') {
+    // 只在游戏进行中显示通知
+    if (msg.isSystem && gameState.isActive) {
       let notificationType: GameNotification['type'] = 'info';
       let title = '系统消息';
       
@@ -165,12 +200,78 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   };
 
   const handleVotePhaseStarted = (data: any) => {
+    console.log('Vote phase started:', data);
     setCurrentVoteStats(data.voteStats);
   };
 
+  const handleSpeakerChange = (data: {
+    currentSpeaker: SpeakerInfo;
+    speakerIndex: number;
+    totalSpeakers: number;
+    timeLimit: number;
+  }) => {
+    console.log('Speaker changed:', data);
+    const isMySpeakingTurn = data.currentSpeaker?.userId === user?.id;
+    
+    setDiscussionState({
+      currentSpeaker: data.currentSpeaker,
+      speakerIndex: data.speakerIndex,
+      totalSpeakers: data.totalSpeakers,
+      timeLimit: data.timeLimit,
+      isMySpeakingTurn,
+      speakingStartTime: Date.now()
+    });
+    
+    setCanSpeak(isMySpeakingTurn);
+    
+    if (isMySpeakingTurn) {
+      setGameNotifications(prev => [...prev, {
+        id: uuidv4(),
+        type: 'info',
+        title: '轮到您发言',
+        message: '现在是您的发言时间，限时5分钟',
+        timestamp: new Date().toISOString(),
+        duration: 10000
+      }]);
+    }
+  };
 
-  roomIdRef.current = roomId;
+  const handleYourTurnToSpeak = (data: {
+    message: string;
+    timeLimit: number;
+  }) => {
+    setCanSpeak(true);
+    setGameNotifications(prev => [...prev, {
+      id: uuidv4(),
+      type: 'warning',
+      title: '发言提醒',
+      message: data.message,
+      timestamp: new Date().toISOString(),
+      duration: data.timeLimit
+    }]);
+  };
 
+  const handleSpeechEnded = (data: SpeechEvent) => {
+    console.log('Speech ended:', data);
+    setCanSpeak(false);
+    setDiscussionState(prev => ({
+      ...prev,
+      speakingStartTime: null
+    }));
+  };
+
+  const removeGameNotification = (id: string) => {
+    setGameNotifications(prev => prev.filter(notif => notif.id !== id));
+  };
+
+  const endSpeech = () => {
+    if (socket && roomId && canSpeak) {
+      socket.emit('end_speech', { roomId });
+      setCanSpeak(false);
+    }
+  };
+
+  // Socket 连接逻辑
   useEffect(() => {
     if (!isLoaded || !user || isConnecting) return;
 
@@ -194,6 +295,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     setSocket(newSocket);
 
     const handleConnect = () => {
+      console.log('Socket connected');
       newSocket.emit('get_rooms');
       const lastRoom = sessionStorage.getItem(`chat_room_${user.id}`);
       if (lastRoom && shouldAutoJoin) {
@@ -206,6 +308,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     };
 
     const handleReconnect = () => {
+      console.log('Socket reconnected');
       newSocket.emit('get_rooms');
       if (roomIdRef.current && shouldAutoJoin) {
         newSocket.emit('join_room', {
@@ -215,10 +318,16 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       }
     };
 
+    const errorHandler = (error: string) => {
+      console.error('Socket error:', error);
+      alert(error);
+    };
+
+    // 注册所有事件监听器
     newSocket.on('connect', handleConnect);
     newSocket.on('reconnect', handleReconnect);
     newSocket.on('rooms_list', setRooms);
-    newSocket.on('room_users', (receivedUsers: User[]) => setUsers(receivedUsers));
+    newSocket.on('room_users', handleRoomUsers);
     newSocket.on('message_history', setMessages);
     newSocket.on('room_state', handleRoomState);
     newSocket.on('game_state', handleGameState);
@@ -231,32 +340,37 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     newSocket.on('night_action_required', handleNightActionRequired);
     newSocket.on('vote_required', handleVoteRequired);
     newSocket.on('hunter_skill_required', handleHunterSkillRequired);
-    
+
     // 投票相关事件
     newSocket.on('vote_results', handleVoteResults);
     newSocket.on('vote_update', handleVoteUpdate);
     newSocket.on('vote_phase_started', handleVotePhaseStarted);
     
-    const errorHandler = (error: string) => alert(error);
+    // 错误处理
     newSocket.on('validation_error', errorHandler);
     newSocket.on('room_full', errorHandler);
     newSocket.on('username_error', errorHandler);
     newSocket.on('rate_limit', errorHandler);
     newSocket.on('user_not_found', errorHandler);
-    newSocket.on('receive_msg', handleReceiveMessage);
     
-    if (!newSocket.connected) newSocket.connect();
+    // 消息和发言相关
+    newSocket.on('receive_msg', handleReceiveMessage);
+    newSocket.on('speaker_change', handleSpeakerChange);
+    newSocket.on('your_turn_to_speak', handleYourTurnToSpeak);
+    newSocket.on('speech_ended', handleSpeechEnded);
+
+    if (!newSocket.connected) {
+      newSocket.connect();
+    }
 
     return () => {
-      newSocket.off('connect', handleConnect);
-      newSocket.off('reconnect', handleReconnect);
-      newSocket.off('rooms_list', setRooms);
-      newSocket.off('receive_msg');
+      console.log('Cleaning up socket listeners');
+      // 清理所有事件监听器
+      newSocket.off('connect');
+      newSocket.off('reconnect');
+      newSocket.off('rooms_list');
       newSocket.off('room_users');
       newSocket.off('message_history');
-      newSocket.off('validation_error', errorHandler);
-      
-      // 清理游戏相关事件监听
       newSocket.off('room_state');
       newSocket.off('game_state');
       newSocket.off('role_info');
@@ -266,24 +380,33 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       newSocket.off('night_action_required');
       newSocket.off('vote_required');
       newSocket.off('hunter_skill_required');
-      newSocket.off('action_success');
-      newSocket.off('vote_success');
       newSocket.off('vote_results');
       newSocket.off('vote_update');
       newSocket.off('vote_phase_started');
-      newSocket.off('player_eliminated');
+      newSocket.off('validation_error');
+      newSocket.off('room_full');
+      newSocket.off('username_error');
+      newSocket.off('rate_limit');
+      newSocket.off('user_not_found');
+      newSocket.off('receive_msg');
+      newSocket.off('speaker_change');
+      newSocket.off('your_turn_to_speak');
+      newSocket.off('speech_ended');
       
+      newSocket.disconnect();
       setIsConnecting(false);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, isLoaded, shouldAutoJoin]);
 
+  // 监听游戏状态变化，获取角色信息
   useEffect(() => {
-    if (socket && roomState === 'playing' && !roleInfo) {
+    if (socket && roomState === 'playing' && !roleInfo && roomId) {
+      console.log('Requesting role info');
       socket.emit('get_role', { roomId });
     }
   }, [socket, roomState, roleInfo, roomId]);
 
+  // 公开方法
   const joinRoom = () => {
     setCreate(true);
     if (socket && username.trim() && roomId.trim()) {
@@ -312,24 +435,48 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       setVoteRequired(null);
       setHunterSkillRequired(null);
       setCurrentVoteStats(null);
+      setDiscussionState({
+        currentSpeaker: null,
+        speakerIndex: 0,
+        totalSpeakers: 0,
+        timeLimit: 300000,
+        isMySpeakingTurn: false,
+        speakingStartTime: null
+      });
+      setCanSpeak(false);
     }
   };
   
   const sendMessage = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // 检查发言权限
+    if (gameState.phase === 'day' && discussionState.totalSpeakers > 0 && !canSpeak) {
+      setGameNotifications(prev => [...prev, {
+        id: uuidv4(),
+        type: 'error',
+        title: '无法发言',
+        message: '现在不是您的发言时间，请等待轮到您发言',
+        timestamp: new Date().toISOString(),
+        duration: 5000
+      }]);
+      return;
+    }
+    
     if (message.trim() && socket && roomId.trim() && username.trim()) {
       socket.emit('send_msg', {
         roomId: roomId.trim(),
         message: message.trim(),
         sender: username.trim(),
         userId: user?.id,
+        channel: gameState.isActive ? 'game' : 'main'
       });
       setMessage('');
     } else {
       alert('请填写消息内容。');
     }
   };
-  
+
   const getRoleInfo = () => {
     if (socket && roomId) {
       socket.emit('get_role', { roomId });
@@ -411,7 +558,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     roomState,
     gameState,
     isRoomOwner,
-    
+    discussionState,
+    canSpeak,
+    endSpeech,
     // 游戏相关属性和方法
     roleInfo,
     gameMessages,

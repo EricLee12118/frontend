@@ -44,7 +44,10 @@ export default class Game {
             this.state.roleAssignments[user.userId] = role;
             this.state.positionAssignments[user.userId] = position;
         });
-
+        
+        if (this.eventBroadcaster) {
+            this.eventBroadcaster.broadcastRoomUsers(this.room.roomId);
+        }
         logger.debug('角色分配完成', this.state.roleAssignments);
     }
 

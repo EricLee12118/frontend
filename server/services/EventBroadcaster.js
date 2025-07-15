@@ -90,4 +90,26 @@ export default class EventBroadcaster {
         this.io.to(roomId).emit('receive_msg', msgData);
         logger.debug(`已向房间 "${roomId}" 发送系统消息：${message}`);
     }
+
+    broadcastDiscussionMessage(roomId, userId, message) {
+        const room = this.globalState.getRoom(roomId);
+        if (!room) {
+            logger.error(`尝试向不存在的房间 "${roomId}" 发送讨论消息`);
+            return;
+        }
+
+        const user = room.getUser(userId);
+        const msgData = {
+            sender: user ? user.username : '未知用户',
+            senderId: userId,
+            message,
+            timestamp: new Date().toISOString(),
+            isSystem: false,
+            channel: 'game'
+        };
+
+        room.addMessage('game', msgData);
+        this.io.to(roomId).emit('receive_msg', msgData);
+        logger.debug(`已向房间 "${roomId}" 发送讨论消息：${message}`);
+    }
 }

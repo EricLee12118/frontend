@@ -86,27 +86,32 @@ export default class RoomService {
         return { success: true, message: '成功离开房间' };
     }
 
-    sendMessage(socket, data) {
-        const { roomId, message } = data;
+    sendMessage(userId, roomId, message, channel = 'main') {
         const room = this.globalState.getRoom(roomId);
         if (!room) return { success: false, message: '房间不存在' };
 
-        if (!this.globalState.checkRateLimit(socket.id)) {
-            return { success: false, message: '您发送消息的频率过高，请稍后再试。' };
+        const user = room.getUser(userId);
+        if (!user) return { success: false, message: '您不在该房间中' };
+
+        if (channel === 'game' && 
+            room.game?.state.isActive && 
+            room.game.state.currentPhase === 'day' &&
+            room.game.state.discussion.currentSpeakerId !== userId) {
+            return { success: false, message: '现在不是您的发言时间' };
         }
 
         const msgData = {
-            sender: socket.username,
-            message,
+            sender: user.username,
+            senderId: userId,
+            message: message.trim(),
             timestamp: new Date().toISOString(),
-            isSystem: data.isSystem || false
+            channel: channel
         };
 
-        room.addMessage('main', msgData);
-        this.io.to(roomId).emit('receive_msg', msgData);
-        logger.info(`Message from "${socket.username}" in room "${roomId}": ${message}`);
+        room.addMessage(channel, msgData);
+        logger.info(`[${channel}] ${user.username}: ${message}`);
 
-        return { success: true };
+        return { success: true, message: msgData };
     }
 
     toggleReady(socket, data) {

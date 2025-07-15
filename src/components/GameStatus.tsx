@@ -4,6 +4,7 @@ import { useRoomContext } from '@/contexts/ChatContext';
 import GameActions from '@/components/game/GameActions';
 import PlayerStatus from '@/components/game/PlayerStatus';
 import GameNotifications from '@/components/game/GameNotifications';
+import DiscussionPanel from '@/components/game/DiscussionPanel';
 
 const GameStatus: React.FC = () => {
   const { 
@@ -207,8 +208,11 @@ const GameStatus: React.FC = () => {
           {/* 中间：玩家状态圆桌 */}
           <div className="col-span-6">
             <div className="bg-white bg-opacity-10 backdrop-blur-md rounded-xl p-6 border border-white border-opacity-20">
-              <PlayerStatus users={users} gameState={gameState} />
+              <PlayerStatus/>
             </div>
+            {gameState.phase === 'day' && (
+              <DiscussionPanel/>
+            )}
           </div>
 
           {/* 右侧：游戏操作和消息 */}
@@ -218,7 +222,7 @@ const GameStatus: React.FC = () => {
               <h3 className="text-white font-semibold mb-4">游戏操作</h3>
               <GameActions />
             </div>
-
+                        
             {/* 游戏消息通知 */}
             <div className="bg-white bg-opacity-10 backdrop-blur-md rounded-xl p-4 border border-white border-opacity-20">
               <h3 className="text-white font-semibold mb-4 flex items-center">

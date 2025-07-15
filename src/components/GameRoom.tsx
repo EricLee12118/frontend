@@ -9,7 +9,7 @@ import ChatArea from '@/components/game_ready/ChatArea';
 import OwnerControls from '@/components/game_ready/OwnerControls';
 import PlayerList from '@/components/game_ready/PlayerList';
 import RoomSettings from '@/components/game_ready/RoomSettings';
-import GameStatus from '@/components/game_ready/GameStatus';
+import GameStatus from '@/components/GameStatus';
 import PlayerControls from '@/components/game_ready/PlayerControls';
 
 import { useAI } from '@/hooks/useAI';
@@ -29,14 +29,12 @@ const GameRoom = () => {
     roomState, 
   } = useRoomContext();
   
-  // 从钩子中获取AI相关功能
   const { 
     isLoadingAI, 
     fillWithAI, 
     isAIUser 
   } = useAI(socket, roomId, users, roomState);
   
-  // 从钩子中获取游戏控制功能
   const {
     isReady,
     isTogglingReady,

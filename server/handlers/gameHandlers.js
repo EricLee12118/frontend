@@ -98,4 +98,14 @@ export default class GameHandlers {
             socket.emit('validation_error', result.message);
         } 
     }
+
+    handleEndSpeech(socket, data) {
+        const { roomId } = data;
+        if (!roomId) return socket.emit('validation_error', '缺少房间ID');
+
+        const result = this.gameService.endSpeech(roomId, socket.userId);
+        if (!result.success) {
+            socket.emit('validation_error', result.message);
+        }
+    }
 }

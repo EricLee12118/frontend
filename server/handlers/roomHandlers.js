@@ -22,13 +22,30 @@ export default class RoomHandlers {
     }
 
     handleSendMessage(socket, data) {
-        const { error } = Validator.validateSendMessage(data);
-        if (error) return socket.emit('validation_error', error.details[0].message);
+        const { roomId, message, channel = 'main' } = data;
+        if (!roomId || !message) return socket.emit('validation_error', '缺少房间ID或消息内容');
 
-        const result = this.roomService.sendMessage(socket, data);
-        if (!result.success) socket.emit('rate_limit', result.message);
+        const room = this.globalState.getRoom(roomId);
+        if (!room) return socket.emit('validation_error', '房间不存在');
+
+        if (room?.game.state.isActive && 
+            room.game.state.currentPhase === 'day' && 
+            channel === 'game') {
+            
+            if (room.game.state.discussion.currentSpeakerId !== socket.userId) {
+                socket.emit('validation_error', '现在不是您的发言时间，请等待轮到您发言');
+                return;
+            }
+        }
+
+        const result = this.roomService.sendMessage(socket.userId, roomId, message, channel);
+        
+        if (result.success) {
+            this.io.to(roomId).emit('receive_msg', result.message);
+        } else {
+            socket.emit('validation_error', result.message);
+        }
     }
-
     handleToggleReady(socket, data) {
         const result = this.roomService.toggleReady(socket, data);
         if (!result.success) socket.emit('validation_error', result.message);

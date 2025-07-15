@@ -29,7 +29,8 @@ export default function initializeSocketHandlers(io, socket, eventBroadcaster) {
     socket.on('witch_action', gameHandlers.handleWitchAction.bind(gameHandlers, socket));
     socket.on('hunter_shoot', gameHandlers.handleHunterShoot.bind(gameHandlers, socket));
     socket.on('skip_action', gameHandlers.handleSkipAction.bind(gameHandlers, socket));
-
+    socket.on('end_speech', gameHandlers.handleEndSpeech.bind(gameHandlers, socket));
+    
     // 断开连接
     socket.on('disconnect', () => {
         logger.info(`用户断开连接: ${socket.username}(${socket.userId})`);
