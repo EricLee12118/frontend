@@ -87,6 +87,7 @@ const GameStatus: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 p-6">
       <div className="max-w-7xl mx-auto">
+        {/* 顶部状态栏 */}
         <div className="mb-6">
           <div className="bg-white bg-opacity-10 backdrop-blur-md rounded-xl p-4 border border-white border-opacity-20">
             <div className="flex items-center justify-between">
@@ -135,7 +136,8 @@ const GameStatus: React.FC = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-12 gap-6">
+        {/* 主游戏区域 */}
+        <div className="grid grid-cols-12 gap-6 mb-6">
           <div className="col-span-3 space-y-4">
             {roleInfo && (
               <div className="bg-white bg-opacity-10 backdrop-blur-md rounded-xl p-4 border border-white border-opacity-20">
@@ -207,15 +209,12 @@ const GameStatus: React.FC = () => {
 
           {/* 中间：玩家状态圆桌 */}
           <div className="col-span-6">
-            <div className="bg-white bg-opacity-10 backdrop-blur-md rounded-xl p-6 border border-white border-opacity-20">
+            <div className="bg-white bg-opacity-10 backdrop-blur-md rounded-xl p-6 border border-white border-opacity-20 h-full">
               <PlayerStatus/>
             </div>
-            {gameState.phase === 'day' && (
-              <DiscussionPanel/>
-            )}
           </div>
 
-          {/* 右侧：游戏操作和消息 */}
+          {/* 右侧：游戏操作和系统通知 */}
           <div className="col-span-3 space-y-4">
             {/* 游戏操作 */}
             <div className="bg-white bg-opacity-10 backdrop-blur-md rounded-xl p-4 border border-white border-opacity-20">
@@ -223,11 +222,11 @@ const GameStatus: React.FC = () => {
               <GameActions />
             </div>
                         
-            {/* 游戏消息通知 */}
+            {/* 系统通知（只显示系统消息） */}
             <div className="bg-white bg-opacity-10 backdrop-blur-md rounded-xl p-4 border border-white border-opacity-20">
               <h3 className="text-white font-semibold mb-4 flex items-center">
                 <span className="mr-2">📢</span>
-                游戏消息
+                系统通知
                 {gameNotifications.length > 0 && (
                   <span className="ml-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full">
                     {gameNotifications.length}
@@ -235,7 +234,7 @@ const GameStatus: React.FC = () => {
                 )}
               </h3>
               <GameNotifications 
-                messages={messages}
+                messages={messages.filter(msg => msg.isSystem)} // 只传入系统消息
                 message={message} 
                 setMessage={setMessage} 
                 sendMessage={sendMessage} 
@@ -251,7 +250,7 @@ const GameStatus: React.FC = () => {
                   <span className="mr-2">💀</span>
                   死亡玩家 ({deadPlayers.length})
                 </h3>
-                <div className="space-y-2">
+                <div className="space-y-2 max-h-32 overflow-y-auto">
                   {deadPlayers.map(player => (
                     <div key={player.userId} className="flex items-center justify-between text-sm">
                       <span className="text-white opacity-75">{player.username}</span>
@@ -263,6 +262,12 @@ const GameStatus: React.FC = () => {
             )}
           </div>
         </div>
+
+        {gameState.phase === 'day' && (
+          <div className="w-full">
+            <DiscussionPanel />
+          </div>
+        )}
       </div>
     </div>
   );

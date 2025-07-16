@@ -25,7 +25,7 @@ export default class RoomHandlers {
         const { roomId, message, channel = 'main' } = data;
         if (!roomId || !message) return socket.emit('validation_error', '缺少房间ID或消息内容');
 
-        const room = this.globalState.getRoom(roomId);
+        const room = this.roomService.getRoom(roomId);
         if (!room) return socket.emit('validation_error', '房间不存在');
 
         if (room?.game.state.isActive && 
@@ -40,12 +40,9 @@ export default class RoomHandlers {
 
         const result = this.roomService.sendMessage(socket.userId, roomId, message, channel);
         
-        if (result.success) {
-            this.io.to(roomId).emit('receive_msg', result.message);
-        } else {
-            socket.emit('validation_error', result.message);
-        }
+        if (!result.success) socket.emit('validation_error', result.message);
     }
+    
     handleToggleReady(socket, data) {
         const result = this.roomService.toggleReady(socket, data);
         if (!result.success) socket.emit('validation_error', result.message);

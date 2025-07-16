@@ -8,6 +8,10 @@ export default class RoomService {
         this.globalState = GlobalState.getInstance();
     }
 
+    getRoom(roomId) {
+        return this.globalState.getRoom(roomId);
+    }
+
     getOrCreateRoom(roomId, creatorUsername, creatorUserId) {
         let room = this.globalState.getRoom(roomId);
         if (!room) {
@@ -109,6 +113,7 @@ export default class RoomService {
         };
 
         room.addMessage(channel, msgData);
+        this.io.to(roomId).emit('receive_msg', msgData);
         logger.info(`[${channel}] ${user.username}: ${message}`);
 
         return { success: true, message: msgData };

@@ -84,6 +84,9 @@ export default class Room {
             user.isReady = false;
         });
         this.updateState();
+        this.channels.game.messages = [];
+        this.channels.main.messages = [];
+        this.channels.werewolf.messages = [];
         return this;
     }
 
