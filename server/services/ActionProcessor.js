@@ -19,6 +19,11 @@ export default class ActionProcessor {
         const { voter, target, error } = this.validateVotePlayers(room, voterId, targetId);
         if (error) return { success: false, message: error };
 
+        const success = room.game.castVote(voterId, targetId);
+        if (!success) {
+            return { success: false, message: '投票失败' };
+        }
+    
         const totalVotes = room.game.actions.recordVote(voterId, targetId);
         voter.setVoted(true);
 
@@ -126,7 +131,7 @@ export default class ActionProcessor {
         if (actionType === 'night' || ['werewolf_kill', 'seer_check', 'witch_action'].includes(actionType)) {
             room.game.state.phaseCompletions.nightActionsCompleted.add(userId);
         } else if (actionType === 'vote') {
-            room.game.state.phaseCompletions.votesCompleted.add(userId);
+            room.game.state.phaseCompletions.voteCompleted.add(userId);
         }
         
         this.checkAndProgressPhase(roomId);

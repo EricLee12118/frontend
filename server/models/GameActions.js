@@ -23,8 +23,9 @@ export default class GameActions {
             timestamp: new Date().toISOString()
         };
 
-        state.phaseCompletions.votesCompleted.add(voterId);
+        state.phaseCompletions.voteCompleted.add(voterId);
         logger.debug(`${voterId} 投票给 ${targetId}`);
+
         return Object.keys(state.voteDetails).length;
     }
 

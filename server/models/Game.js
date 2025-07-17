@@ -51,6 +51,47 @@ export default class Game {
         logger.debug('角色分配完成', this.state.roleAssignments);
     }
 
+    castVote(voterId, targetId) {
+        try{
+        const voter = this.room.getUser(voterId);
+        const target = this.room.getUser(targetId);
+        
+        if (!voter || !voter.isAlive || !target || !target.isAlive) {
+            return false;
+        }
+        const state = this.state;
+        Object.keys(state.votes).forEach(targetId => {
+            if (Array.isArray(state.votes[targetId])) {
+                const index = state.votes[targetId].indexOf(voterId);
+                if (index !== -1) {
+                    state.votes[targetId].splice(index, 1);
+                    if (state.votes[targetId].length === 0) {
+                        delete state.votes[targetId];
+                    }
+                }
+            }
+        });
+        
+        if (!state.votes[targetId]) {
+            state.votes[targetId] = [];
+        }
+        state.votes[targetId].push(voterId);
+        
+        state.voteDetails[voterId] = {
+            targetId: targetId,
+            timestamp: new Date().toISOString()
+        };
+        
+        state.phaseCompletions.voteCompleted.add(voterId);
+        
+        logger.info(`投票成功: ${voter.username} → ${target.username}`);
+            return true;
+        } catch (error) {
+            logger.error(`投票异常: ${error.message}`, error);
+            return false;
+        }
+    }
+
     createRolePool(playerCount) {
         const { werewolves, villagers, seer, witch, hunter } = this.state.settings;
         let pool = [];

@@ -39,7 +39,7 @@ export default class GameState {
         
         this.phaseCompletions = {
             nightActionsCompleted: new Set(),
-            votesCompleted: new Set(),
+            voteCompleted: new Set(),
             requiredNightRoles: new Set(),
             requiredVoters: new Set()
         };
@@ -113,7 +113,7 @@ export default class GameState {
     resetPhaseCompletions() {
         this.phaseCompletions = {
             nightActionsCompleted: new Set(),
-            votesCompleted: new Set(),
+            voteCompleted: new Set(),
             requiredNightRoles: new Set(),
             requiredVoters: new Set()
         };
@@ -168,7 +168,7 @@ export default class GameState {
             return true; 
         } else if (this.currentPhase === 'vote') {
             for (const userId of this.phaseCompletions.requiredVoters) {
-                if (!this.phaseCompletions.votesCompleted.has(userId) && !this.voteDetails[userId]) {
+                if (!this.phaseCompletions.voteCompleted.has(userId) && !this.voteDetails[userId]) {
                     return false;
                 }
             }
