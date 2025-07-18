@@ -1,36 +1,111 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
-
+# Project Instructions
 ## Getting Started
 
-First, run the development server:
+Before you begin, ensure you have [Node.js](https://nodejs.org/en/) installed on your system.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+### 1. **Navigate to the project directory**:
+   ```bash
+   cd project-directory
+   ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. **Install dependencies**:
+   ```bash
+    npm install
+    # or
+    yarn install # (recommended)
+    # or
+    pnpm install
+    # or
+    bun install
+   ```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 3. **Start the development server**:
+    ```bash
+    npm run dev
+    # or
+    yarn dev  # (recommended)
+    # or
+    pnpm dev
+    # or
+    bun dev
+    ```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 4. **Open your browser** and go to `http://localhost:3000` to see your app.
 
-## Learn More
+### 5. **Build for production**:
+    ```bash
+    npm run build
+    # or    
+    yarn build  # (recommended)
+    # or
+    pnpm build
+    # or
+    bun build
+    ```
 
-To learn more about Next.js, take a look at the following resources:
+### 6. **Start the production server**:
+    ```bash
+    npm run start
+    # or
+    yarn start  # (recommended)
+    # or
+    pnpm start
+    # or
+    bun start
+    ```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Gameplay
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### 1. Login as a Player
+- Access the game website and authenticate using your preferred method (email, Google, or GitHub)
+- New players will have profiles created automatically
+- Returning players are directed to their dashboard with game history
 
-## Deploy on Vercel
+### 2. Create or Join a Room
+- **Create a Room**:  
+  - Click "Create Room" to become the Game Master. The room size is limited to 8 players.
+  
+- **Join a Room**:
+  - Click the Room displays on the main page to join a room.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### 3. Game Setup (Lobby)
+- Game Master can:
+  - Add/remove AI players to fill spots
+  - Start game when all players are ready
+- Players can:
+  - Chat with others in lobby
+  - Change readiness status
+  - View assigned role when game starts
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### 4. Game Start
+- **Role Assignment**:
+  - All players receive secret roles via private message
+  - The first night phase
+
+### 5. Game Phases
+**Night Phase (All players "sleep"):**
+- Werewolves: Wake up to select a victim
+- Seer: Wakes to investigate one player's role
+- Doctor: Chooses a player to protect from elimination
+- Other special roles perform actions based on configuration
+
+**Day Phase:**
+1. **Announcement**: Game reveals night's events (who died, protected, etc.)
+2. **Discussion** (5 minutes):
+   - Survivors debate events and suspicions
+   - Players defend themselves and accuse others
+3. **Voting**:
+   - Players vote to eliminate one suspect
+   - Tied votes trigger revotes or special rules
+4. **Execution**: Voted player reveals role and is eliminated
+
+### 6. Winning Conditions
+- **Werewolves win** when they equal or outnumber villagers
+- **Villagers win** when all werewolves are eliminated
+
+### 7. Game End
+- Full role reveal of all players
+- Victory screen shows winning faction
+- Options to:
+  - Play again with same group
+  - Return to lobby

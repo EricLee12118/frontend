@@ -16,12 +16,12 @@
 # next.js
 /.next/
 /out/
-/.vscode/
+/.vscode
 
 # production
 /build
 server.log
-
+/log
 # misc
 .DS_Store
 *.pem

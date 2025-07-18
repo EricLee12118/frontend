@@ -173,9 +173,9 @@ export default class VotePhaseManager {
     }
 
     formatVoteResults(voteStats, room) {
-        const { voteResults, voterDetails, totalVotes, alivePlayers } = voteStats;
+        const { voteResults, voterDetails } = voteStats;
         
-        let message = `📊 投票淘汰结果统计\n总投票数: ${totalVotes}/${alivePlayers}\n`;
+        let message = ``;
 
         if (Object.keys(voteResults).length === 0) {
             message += "• 无人获得投票\n";

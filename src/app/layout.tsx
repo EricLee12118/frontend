@@ -3,8 +3,8 @@ import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Real Time Chat",
-  description: "Implementation",
+  title: "Online Werewolf Game",
+  description: "Werewolf game for online play, implemented with Next.js and Socket.io.",
 };
 
 export default function RootLayout({

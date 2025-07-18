@@ -1,4 +1,7 @@
 import winston from 'winston';
+import path from 'path';
+
+const logDir = path.join(process.cwd(), 'logs');
 
 const logger = winston.createLogger({
     level: 'info',
@@ -8,7 +11,10 @@ const logger = winston.createLogger({
     ),
     transports: [
         new winston.transports.Console(),
-        new winston.transports.File({ filename: 'server.log' }),
+        new winston.transports.File({ 
+            filename: path.join(logDir, 'server.log'),
+            dirname: logDir
+        }),
     ],
 });
 
