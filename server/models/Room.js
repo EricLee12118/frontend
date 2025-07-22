@@ -78,7 +78,7 @@ export default class Room {
 
     endGame() {
         this.state = 'waiting';
-        this.game.end();
+        this.game.reset();;
         this.users.forEach(user => {
             user.clearRole();
             user.isReady = false;

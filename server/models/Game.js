@@ -138,7 +138,7 @@ export default class Game {
 
         if (aliveWerewolves === 0) {
             return { ended: true, winner: 'good', message: '好人阵营胜利！所有狼人已被淘汰。' };
-        } else if (aliveWerewolves >= aliveGoodGuys) {
+        } else if (aliveGoodGuys === 0) {
             return { ended: true, winner: 'werewolf', message: '狼人阵营胜利！狼人数量已达到或超过好人数量。' };
         }
         

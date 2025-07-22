@@ -1,6 +1,8 @@
+// components/game_ready/GameRoom.tsx
 'use client';
 import { useRoomContext } from '@/contexts/ChatContext';
 import { useUser } from '@clerk/nextjs';
+import { useEffect, useRef } from 'react'; // 添加 useRef
 
 import Header from '@/components/game_ready/Header';
 import PlayerGrid from '@/components/game_ready/PlayerGrid';
@@ -11,11 +13,11 @@ import PlayerList from '@/components/game_ready/PlayerList';
 import RoomSettings from '@/components/game_ready/RoomSettings';
 import GameStatus from '@/components/GameStatus';
 import PlayerControls from '@/components/game_ready/PlayerControls';
-
 import { useAI } from '@/hooks/useAI';
 import { useGameControls } from '@/hooks/useGameControls';
 
 const GameRoom = () => {
+  
   const { user } = useUser(); 
   const { 
     roomId, 
@@ -26,8 +28,11 @@ const GameRoom = () => {
     sendMessage, 
     leaveRoom,
     socket,
-    roomState, 
+    roomState,
+    resetGameState
   } = useRoomContext();
+  
+  const prevRoomStateRef = useRef(roomState);
   
   const { 
     isLoadingAI, 
@@ -45,11 +50,15 @@ const GameRoom = () => {
     endGame
   } = useGameControls(socket, roomId, users, user, roomState);
 
-  console.log("roomState:", roomState);
+  useEffect(() => {
+    if (prevRoomStateRef.current === 'playing' && roomState !== 'playing') {
+      resetGameState(); 
+    }
+    prevRoomStateRef.current = roomState; 
+  }, [roomState, resetGameState]);
 
   return (
     <div>
-      {/* 头部信息始终显示 */}
       <Header 
         roomId={roomId} 
         usersCount={users.length} 
@@ -58,10 +67,8 @@ const GameRoom = () => {
       />
 
       {roomState === 'playing' ? (
-        /* 游戏进行中只显示GameStatus */
         <GameStatus />
       ) : (
-        /* 其他状态显示原有内容 */
         <div className="grid grid-cols-3 gap-6">
           <div className="col-span-2 bg-white bg-opacity-90 p-6 rounded-lg shadow-md space-y-6">
             {/* 状态提示 */}

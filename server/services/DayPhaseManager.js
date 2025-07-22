@@ -15,7 +15,14 @@ export default class DayPhaseManager {
         room.game.state.resetDiscussionState();
 
         this.announceNightResults(roomId, nightResults);
-
+        this.eventBroadcaster.broadcastRoomUsers(roomId);
+        
+        const gameEndCheck = room.game.checkGameEnd();
+        if (gameEndCheck.ended) {
+            this.phaseManager.lifecycleManager.endGame(roomId, gameEndCheck.winner, gameEndCheck.message);
+            return { success: true, gameEnded: true };
+        }
+        
         setTimeout(() => {
             this.eventBroadcaster.broadcastGameState(roomId);
             this.eventBroadcaster.broadcastSystemMessage(roomId,

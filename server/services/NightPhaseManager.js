@@ -192,12 +192,6 @@ export default class NightPhaseManager {
 
         this.timerManager.clearPhaseTimer(roomId);
         const nightResults = this.executeNightActions(roomId);
-        
-        const gameEndCheck = room.game.checkGameEnd();
-        if (gameEndCheck.ended) {
-            this.phaseManager.lifecycleManager.endGame(roomId, gameEndCheck.winner, gameEndCheck.message);
-            return { success: true, gameEnded: true };
-        }
 
         this.phaseManager.dayManager.startDayPhase(roomId, nightResults);
         return { success: true };

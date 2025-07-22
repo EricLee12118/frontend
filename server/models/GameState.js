@@ -88,6 +88,7 @@ export default class GameState {
         this.deathRecord = [];
         this.lastNightDeath = null;
         this.witchItems = { hasAntidote: true, hasPoison: true };
+        this.state.resetDiscussionState();
     }
 
     nextDay() {

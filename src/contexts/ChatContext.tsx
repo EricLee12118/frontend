@@ -539,6 +539,50 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const resetGameState = () => {
+    console.log('Resetting game state...');
+    
+    setGameState({ 
+      isActive: false,
+      round: 0,
+      phase: null,
+      startTime: null,
+      endTime: null
+    });
+    
+    setRoleInfo(null);
+    
+    setGameMessages([]);
+    
+    setSeerResult(null);
+    
+    setNightActionRequired(null);
+    
+    setVoteRequired(null);
+    setHunterSkillRequired(null);
+    setCurrentVoteStats(null);
+    
+    setPhaseProgress(null);
+    
+    setGameNotifications([]);
+    
+    setDiscussionState({
+      currentSpeaker: null,
+      speakerIndex: 0,
+      totalSpeakers: 0,
+      timeLimit: 300000,
+      isMySpeakingTurn: false,
+      speakingStartTime: null
+    });
+    
+    setCanSpeak(false);
+    
+    setMessages(prev => prev.filter(msg => msg.isSystem));
+    
+    console.log('Game state has been reset');
+  };
+
+
   const value = {
     socket,
     username,
@@ -582,6 +626,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     gameNotifications,
     removeGameNotification,
     setPhaseProgress,
+    resetGameState
   };
 
   return <RoomContext.Provider value={value}>{children}</RoomContext.Provider>;

@@ -212,4 +212,5 @@ export interface RoomContextType {
   witchAction: (action: 'save' | 'poison', targetId?: string) => void;
   hunterShoot: (targetId: string) => void;
   skipAction: (actionType: string) => void;
+  resetGameState: () => void;
 }
